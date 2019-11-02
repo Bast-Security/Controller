@@ -4,15 +4,16 @@ defmodule Bast.Middleman.REST do
   REST messages sent to the middleman.
   """
 
-  import Plug.Conn
+  use Plug.Router
 
-  def init(options) do
-    options
+  plug :match
+  plug :dispatch
+
+  get "/" do
+    conn |> send_resp(200, "Hello World!\n")
   end
 
-  def call(conn, _options) do
-    conn
-    |> put_resp_content_type("text/plain")
-    |> send_resp(200, "Hello World!\n")
+  match _ do
+    conn |> send_resp(404, "Bad endpoint.\n")
   end
 end
