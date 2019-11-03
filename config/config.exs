@@ -2,6 +2,14 @@
 # and its dependencies with the aid of the Mix.Config module.
 use Mix.Config
 
+config :middleman, Bast.Middleman.Repo,
+  database: "bast",
+  username: "bast",
+  password: "bast",
+  hostname: "localhost"
+
+config :middleman, ecto_repos: [Bast.Middleman.Repo]
+
 # This configuration is loaded before any dependency and is restricted
 # to this project. If another project depends on this project, this
 # file won't be loaded nor affect the parent project. For this reason,

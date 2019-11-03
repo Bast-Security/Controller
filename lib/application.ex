@@ -4,6 +4,8 @@ defmodule Bast.Middleman.Application do
 
   def start(_type, _args) do
     children = [
+      Bast.Middleman.Repo,
+
       {
         Plug.Cowboy,
         scheme: :http,
