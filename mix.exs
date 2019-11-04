@@ -24,7 +24,8 @@ defmodule Bast.Middleman.MixProject do
     [
       plug_cowboy: "~> 2.0",
       ecto_sql: "~> 3.2",
-      myxql: "~> 0.2.10"
+      myxql: "~> 0.2.10",
+      jason: "~> 1.1"
     ]
   end
 end
