@@ -1,10 +1,10 @@
-defmodule Bast.Middleman.REST do
+defmodule Bast.Controller.REST do
   @moduledoc """
   This is the HTTP server responsible for handling HTTP
   REST messages sent to the middleman.
   """
   
-  alias Bast.Middleman.User
+  alias Bast.Controller.User
 
   use Plug.Router
 
@@ -18,7 +18,7 @@ defmodule Bast.Middleman.REST do
 
   post "/addUser" do
     user = struct(User, conn.body_params) |> User.validate
-    case Bast.Middleman.Repo.insert(user, on_conflict: :nothing) do
+    case Bast.Controller.Repo.insert(user, on_conflict: :nothing) do
       {:ok, _user} -> send_resp(conn, 200, "User added!\n")
       {:error, _changeset} -> send_resp(conn, 400, "Malformed request!\n")
     end

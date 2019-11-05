@@ -1,4 +1,4 @@
-defmodule Bast.Middleman.Repo.Migrations.CreateTables do
+defmodule Bast.Controller.Repo.Migrations.CreateTables do
   use Ecto.Migration
 
   def change do

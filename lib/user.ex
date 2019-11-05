@@ -1,4 +1,4 @@
-defmodule Bast.Middleman.User do
+defmodule Bast.Controller.User do
   use Ecto.Schema
   import Ecto.Changeset
 
@@ -15,6 +15,6 @@ defmodule Bast.Middleman.User do
     field   :pubkey,  :binary
     field   :pin,     :string
     field   :cardno,  :integer
-    has_one :door,    Bast.Middleman.Door
+    has_one :door,    Bast.Controller.Door
   end
 end

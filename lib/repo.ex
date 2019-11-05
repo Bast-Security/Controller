@@ -1,5 +1,5 @@
-defmodule Bast.Middleman.Repo do
+defmodule Bast.Controller.Repo do
   use Ecto.Repo,
-    otp_app: :middleman,
+    otp_app: :controller,
     adapter: Ecto.Adapters.MyXQL
 end

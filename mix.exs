@@ -1,9 +1,9 @@
-defmodule Bast.Middleman.MixProject do
+defmodule Bast.Controller.MixProject do
   use Mix.Project
 
   def project do
     [
-      app: :middleman,
+      app: :controller,
       version: "0.1.0",
       elixir: "~> 1.7",
       start_permanent: Mix.env() == :prod,
@@ -15,7 +15,7 @@ defmodule Bast.Middleman.MixProject do
   def application do
     [
       extra_applications: [:logger],
-      mod: {Bast.Middleman.Application, []}
+      mod: {Bast.Controller.Application, []}
     ]
   end
 

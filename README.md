@@ -1,4 +1,4 @@
-# Middleman
+# Controller
 
-The Bast middleman stores the settings and database used by Bast locks, and facilitates communication between the Bast application and locks.
+The Bast controller stores the settings and database used by Bast locks, and facilitates communication between the Bast application and locks.
 
