@@ -4,9 +4,10 @@ defmodule Bast.Middleman.REST do
   REST messages sent to the middleman.
   """
   
-  alias Bast.Middleman.{User}
+  alias Bast.Middleman.User
 
   use Plug.Router
+
   plug Plug.Logger
   plug Plug.Parsers,
     parsers: [:json],
@@ -16,9 +17,11 @@ defmodule Bast.Middleman.REST do
   plug :dispatch
 
   post "/addUser" do
-    user = struct(User, conn.body_params)
-    {:ok, _user} = Bast.Middleman.Repo.insert user
-    conn |> send_resp(200, "User added!\n")
+    user = struct(User, conn.body_params) |> User.validate
+    case Bast.Middleman.Repo.insert(user, on_conflict: :nothing) do
+      {:ok, _user} -> send_resp(conn, 200, "User added!\n")
+      {:error, _changeset} -> send_resp(conn, 400, "Malformed request!\n")
+    end
   end
 
   match _ do
