@@ -25,7 +25,8 @@ defmodule Bast.Controller.MixProject do
       plug_cowboy: "~> 2.0",
       ecto_sql: "~> 3.2",
       myxql: "~> 0.2.10",
-      jason: "~> 1.1"
+      jason: "~> 1.1",
+      mdns: "~> 1.0.3"
     ]
   end
 end

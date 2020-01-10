@@ -3,7 +3,7 @@ defmodule Bast.Controller.REST do
   This is the HTTP server responsible for handling HTTP
   REST messages sent to the middleman.
   """
-  
+
   alias Bast.Controller.User
 
   use Plug.Router
@@ -22,6 +22,26 @@ defmodule Bast.Controller.REST do
       {:ok, _user} -> send_resp(conn, 200, "User added!\n")
       {:error, _changeset} -> send_resp(conn, 400, "Malformed request!\n")
     end
+  end
+
+  post "/addRole" do
+    send_resp(conn, 200, "/addRole")
+  end
+
+  post "/addLock" do
+    send_resp(conn, 200, "/addLock")
+  end
+
+  get "/listUsers" do
+    send_resp(conn, 200, "/listUsers")
+  end
+
+  get "/listRoles" do
+    send_resp(conn, 200, "/listRoles")
+  end
+
+  get "/listLocks" do
+    send_resp(conn, 200, "/listLocks")
   end
 
   match _ do
