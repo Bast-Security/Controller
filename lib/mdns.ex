@@ -4,7 +4,9 @@ defmodule Bast.Controller.Mdns do
   defp add_services do
     Mdns.Server.start
 
-    Mdns.Server.set_ip({10, 0, 1, 29})
+    {:ok, [ {ip, _a, _b} | _rest ] } = :inet.getif()
+
+    Mdns.Server.set_ip(ip)
 
     [
       %Mdns.Server.Service{
@@ -31,7 +33,7 @@ defmodule Bast.Controller.Mdns do
   end
 
   def init(state) do
-    add_services
+    add_services()
     {:ok, state}
   end
 
