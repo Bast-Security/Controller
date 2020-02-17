@@ -4,20 +4,25 @@ defmodule Bast.Controller.REST do
   REST messages sent to the middleman.
   """
 
-  alias Bast.Controller.User
-
   use Plug.Router
 
   plug Plug.Logger
   plug Plug.Parsers,
-    parsers: [:json],
+    parsers: [:json,:urlencoded,:multipart],
     json_decoder: Jason
-  plug :formatter
   plug :match
   plug :dispatch
 
   post "/addUser" do
-    user = struct(User, conn.body_params) |> User.validate
+    body = conn.body_params
+
+    user = %Bast.Controller.User{
+      name: body["name"],
+      email: body["email"],
+      pin: body["pin"],
+      cardno: body["cardno"]
+    } |> Bast.Controller.User.validate
+
     case Bast.Controller.Repo.insert(user, on_conflict: :nothing) do
       {:ok, _user} -> send_resp(conn, 200, "User added!\n")
       {:error, _changeset} -> send_resp(conn, 400, "Malformed request!\n")
@@ -25,7 +30,14 @@ defmodule Bast.Controller.REST do
   end
 
   post "/addRole" do
-    send_resp(conn, 200, "/addRole")
+    user = %Bast.Controller.Role{
+      name: conn.body_params["name"]
+    } |> Bast.Controller.Role.validate
+
+    case Bast.Controller.Repo.insert(user, on_conflict: :nothing) do
+      {:ok, _user} -> send_resp(conn, 200, "Role added!\n")
+      {:error, _changeset} -> send_resp(conn, 400, "Malformed request!\n")
+    end
   end
 
   post "/addLock" do
@@ -46,10 +58,5 @@ defmodule Bast.Controller.REST do
 
   match _ do
     conn |> send_resp(404, "Bad endpoint.\n")
-  end
-
-  defp formatter(conn, _opts) do
-    new_params = Map.new(conn.body_params, fn {k, v} -> {String.to_atom(k), v} end)
-    %{conn | body_params: new_params}
   end
 end

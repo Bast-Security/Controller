@@ -9,7 +9,7 @@ defmodule Bast.Controller.Repo.Migrations.CreateTables do
 
     create table(:users) do
       add :name,    :string, size: 32, null: false
-      add :email,   :string
+      add :email,   :string,           null: false
       add :pin,     :string
       add :cardno,  :integer
       add :lastaccess, references(:doors)
