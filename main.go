@@ -44,6 +44,14 @@ func main() {
 	select {}
 }
 
+func cardValidate(card, door string) {
+
+}
+
+func pinValidate(pin, door string) {
+
+}
+
 func handlePin(client mqtt.Client, message mqtt.Message) {
 	log.Println(string(message.Payload()))
 }
