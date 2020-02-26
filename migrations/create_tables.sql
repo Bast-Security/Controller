@@ -28,25 +28,16 @@ CREATE TABLE UserRole (
 );
 
 CREATE TABLE Permissions (
-    id INTEGER AUTO_INCREMENT NOT NULL,
     role VARCHAR(32) NOT NULL,
     door VARCHAR(32) NOT NULL,
-    PRIMARY KEY (id),
+    PRIMARY KEY (role, door),
     FOREIGN KEY (role) REFERENCES Roles (name),
     FOREIGN KEY (door) REFERENCES Doors (name)
 );
 
-CREATE TABLE AuthOption (
-    id INTEGER AUTO_INCREMENT NOT NULL,
-    door VARCHAR(32) NOT NULL
-    PRIMARY KEY (id),
+CREATE TABLE AuthTypes (
+    door VARCHAR(32) NOT NULL,
+    authType INTEGER NOT NULL,
+    PRIMARY KEY (door, authtype),
     FOREIGN KEY (door) REFERENCES Doors (name)
 );
-
-CREATE TABLE AuthType (
-    option INTEGER NOT NULL,
-    type INTEGER NOT NULL,
-    PRIMARY KEY (option, type),
-    FOREIGN KEY (option) REFERENCES AuthOption (id)
-);
-
