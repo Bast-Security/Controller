@@ -20,6 +20,7 @@ var (
 
 func main() {
 	var (
+		name string
 		mdnsServer *zeroconf.Server
 		err error
 	)
@@ -39,10 +40,22 @@ func main() {
 	}
 	defer db.Close()
 
+	if name, err = getSetting("name"); err != nil {
+		log.Fatal(err)
+	}
+
 	log.Println("Connecting to MQTT broker.")
 	mqttClient := mqtt.NewClient(mqtt.NewClientOptions().AddBroker("tcp://localhost:1883"))
 	if token := mqttClient.Connect(); token.Wait() && token.Error() != nil {
 		log.Println(token.Error())
+	} else {
+		if token := mqttClient.Subscribe(fmt.Sprintf("bast/%s/+/pin", name), 0, handlePin); token.Wait() && token.Error() != nil {
+			log.Println(token.Error())
+		}
+
+		if token := mqttClient.Subscribe(fmt.Sprintf("bast/%s/+/card", name), 0, handleCard); token.Wait() && token.Error() != nil {
+			log.Println(token.Error())
+		}
 	}
 
 	log.Println("Starting REST server.")
@@ -195,75 +208,5 @@ func main() {
 	})
 
 	http.ListenAndServe(":8080", router)
-}
-
-func cardValidate(card, door string) (valid bool) {
-	valid = false
-
-	rows, err := db.Query(`SELECT Users.name
-		FROM Users
-		INNER JOIN UserRole ON UserRole.userid = Users.id
-		INNER JOIN Permissions ON Permissions.role = UserRole.role
-		INNER JOIN AuthTypes ON Permissions.door = AuthTypes.door
-		WHERE Permissions.door = ?
-		AND Users.cardno = ?
-		AND (AuthTypes.authType = 2 OR AuthTypes.authType = -3)`, door, card)
-
-	if err != nil {
-		log.Println(err)
-	} else {
-		defer rows.Close()
-		for rows.Next() {
-			var user string
-			if err := rows.Scan(&user); err != nil {
-				log.Println(err)
-				return
-			}
-			valid = true
-		}
-		if err := rows.Err(); err != nil {
-			log.Println(err)
-		}
-	}
-	return
-}
-
-func pinValidate(pin, door string) (valid bool) {
-	valid = false
-
-	rows, err := db.Query(`SELECT Users.name
-		FROM Users
-		INNER JOIN UserRole ON UserRole.userid = Users.id
-		INNER JOIN Permissions ON Permissions.role = UserRole.role
-		INNER JOIN AuthTypes ON Permissions.door = AuthTypes.door
-		WHERE Permissions.door = ?
-		AND Users.pin = ?
-		AND (AuthTypes.authType = 1 OR AuthTypes.authType = -3)`, door, pin)
-
-	if err != nil {
-		log.Println(err)
-	} else {
-		defer rows.Close()
-		for rows.Next() {
-			var user string
-			if err := rows.Scan(&user); err != nil {
-				log.Println(err)
-				return
-			}
-			valid = true
-		}
-		if err := rows.Err(); err != nil {
-			log.Println(err)
-		}
-	}
-	return
-}
-
-func handlePin(client mqtt.Client, message mqtt.Message) {
-	log.Println(string(message.Payload()))
-}
-
-func handleCard(client mqtt.Client, message mqtt.Message) {
-	log.Println(string(message.Payload()))
 }
 
