@@ -3,6 +3,7 @@ package main
 import (
 	mqtt "github.com/eclipse/paho.mqtt.golang"
 	"log"
+	"fmt"
 	"strings"
 )
 
@@ -22,6 +23,13 @@ func handlePin(client mqtt.Client, message mqtt.Message) {
 
 	if pinValidate(pin, door) {
 		status = "ACCESS GRANTED"
+		if token := client.Publish(fmt.Sprintf("bast/%s/%s/granted", name, door), 0, false, "granted"); token.Wait() && token.Error() != nil {
+			log.Println(token.Error())
+		}
+	} else {
+		if token := client.Publish(fmt.Sprintf("bast/%s/%s/denied", name, door), 0, false, "denied"); token.Wait() && token.Error() != nil {
+			log.Println(token.Error())
+		}
 	}
 
 	log.Printf("%s for PIN %s at %s\n", status, pin, door)
@@ -32,9 +40,15 @@ func handleCard(client mqtt.Client, message mqtt.Message) {
 	card := string(message.Payload())
 	status := "ACCESS DENIED"
 
-
 	if cardValidate(card, door) {
 		status = "ACCESS GRANTED"
+		if token := client.Publish(fmt.Sprintf("bast/%s/%s/granted", name, door), 0, false, "denied"); token.Wait() && token.Error() != nil {
+			log.Println(token.Error())
+		}
+	} else {
+		if token := client.Publish(fmt.Sprintf("bast/%s/%s/denied", name, door), 0, false, "granted"); token.Wait() && token.Error() != nil {
+			log.Println(token.Error())
+		}
 	}
 
 

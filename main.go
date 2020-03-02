@@ -16,11 +16,11 @@ import (
 
 var (
 	db *sql.DB
+	name string
 )
 
 func main() {
 	var (
-		name string
 		mdnsServer *zeroconf.Server
 		err error
 	)
