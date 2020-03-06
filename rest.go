@@ -50,9 +50,18 @@ func router() http.Handler {
 }
 
 func getChallenge(res http.ResponseWriter, req *http.Request) {
-	user := struct{ id int }{ }
+	var (
+		user map[string]int
+		id int
+		ok bool
+	)
+
 	if err := render.DecodeJSON(req.Body, &user); err != nil {
 		log.Println(err)
+		res.WriteHeader(400)
+		return
+	}
+	if id, ok = user["id"]; !ok {
 		res.WriteHeader(400)
 		return
 	}
@@ -64,13 +73,13 @@ func getChallenge(res http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	if _, err := db.Exec(`UPDATE Admins SET challenge = ? WHERE id = ?;`, challengeData, user.id); err != nil {
+	if _, err := db.Exec(`UPDATE Admins SET challenge = ? WHERE id = ?;`, challengeData, id); err != nil {
 		log.Println(err)
 		res.WriteHeader(400)
 		return
 	}
 
-	challenge := struct{ challenge []byte }{ challengeData }
+	challenge := map[string][]byte{ "challenge": challengeData }
 	render.JSON(res, req, challenge)
 }
 
