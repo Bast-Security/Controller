@@ -50,8 +50,8 @@ CREATE TABLE Settings (
 
 CREATE TABLE Admins (
     id INTEGER AUTO_INCREMENT NOT NULL,
-    keyX INTEGER NOT NULL,
-    keyY INTEGER NOT NULL,
+    keyX BLOB NOT NULL,
+    keyY BLOB NOT NULL,
     challenge BINARY(16),
     PRIMARY KEY (id)
 );

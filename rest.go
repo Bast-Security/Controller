@@ -107,13 +107,14 @@ func handleLogin(res http.ResponseWriter, req *http.Request) {
 
 func newAdmin(res http.ResponseWriter, req *http.Request) {
 	var pubKey ecdsa.PublicKey
+
 	if err := render.DecodeJSON(req.Body, &pubKey); err != nil {
 		log.Println(err)
 		res.WriteHeader(400)
 		return
 	}
 
-	result, err := db.Exec(`INSERT INTO Admins (keyX, keyY) VALUES (?, ?);`, pubKey.X, pubKey.Y);
+	result, err := db.Exec(`INSERT INTO Admins (keyX, keyY) VALUES (?, ?);`, pubKey.X.String(), pubKey.Y.String());
 	if err != nil {
 		log.Println(err)
 		res.WriteHeader(500)
