@@ -3,26 +3,83 @@ package main
 import (
 	"github.com/go-chi/render"
 
-	"io/ioutil"
+	"math/big"
+	"crypto/ecdsa"
+	"crypto/rand"
 	"net/http"
 	"log"
 )
 
-func newAdmin(res http.ResponseWriter, req *http.Request) {
-	key, err := ioutil.ReadAll(req.Body)
-	if err != nil {
+func getChallenge(res http.ResponseWriter, req *http.Request) {
+	user := struct{ id int }{ }
+	if err := render.DecodeJSON(req.Body, &user); err != nil {
+		log.Println(err)
+		res.WriteHeader(400)
+		return
+	}
+
+	challengeData := make([]byte, 16)
+	if _, err := rand.Read(challengeData); err != nil {
+		log.Println(err)
 		res.WriteHeader(500)
 		return
 	}
 
-	result, err := db.Exec(`INSERT INTO Admins (pubKey) VALUES (?);`, key);
+	if _, err := db.Exec(`UPDATE Admins SET challenge = ? WHERE id = ?;`, challengeData, user.id); err != nil {
+		log.Println(err)
+		res.WriteHeader(400)
+		return
+	}
+
+	challenge := struct{ challenge []byte }{ challengeData }
+	render.JSON(res, req, challenge)
+}
+
+func handleLogin(res http.ResponseWriter, req *http.Request) {
+	response := struct{ id int; r, s *big.Int }{ }
+	if err := render.DecodeJSON(req.Body, &response); err != nil {
+		log.Println(err)
+		res.WriteHeader(400)
+		return
+	}
+
+	var (
+		challenge []byte
+		pubKey ecdsa.PublicKey
+	)
+
+	row := db.QueryRow(`SELECT challenge, keyX, keyY FROM Admins WHERE id = ?;`, response.id)
+	if err := row.Scan(&challenge, pubKey.X, pubKey.Y); err != nil {
+		log.Println(err)
+		res.WriteHeader(400)
+		return
+	}
+
+	if ecdsa.Verify(&pubKey, challenge, response.r, response.r) {
+		res.WriteHeader(200)
+	} else {
+		res.WriteHeader(400)
+	}
+}
+
+func newAdmin(res http.ResponseWriter, req *http.Request) {
+	var pubKey ecdsa.PublicKey
+	if err := render.DecodeJSON(req.Body, &pubKey); err != nil {
+		log.Println(err)
+		res.WriteHeader(400)
+		return
+	}
+
+	result, err := db.Exec(`INSERT INTO Admins (keyX, keyY) VALUES (?, ?);`, pubKey.X, pubKey.Y);
 	if err != nil {
+		log.Println(err)
 		res.WriteHeader(500)
 		return
 	}
 
 	id, err := result.LastInsertId()
 	if err != nil {
+		log.Println(err)
 		res.WriteHeader(500)
 		return
 	}
@@ -38,6 +95,7 @@ func addLock(res http.ResponseWriter, req *http.Request) {
 	_, err := db.Exec(`INSERT INTO Door (name) VALUES (?);`, door)
 
 	if err != nil{
+		log.Println(err)
 		res.WriteHeader(400)
 	}else{
 		res.WriteHeader(200)
@@ -52,6 +110,7 @@ func addRole(res http.ResponseWriter, req *http.Request) {
 	_, err := db.Exec(`INSERT INTO Roles (name) VALUES (?);`, role)
 
 	if err != nil{
+		log.Println(err)
 		res.WriteHeader(400)
 	}else{
 		res.WriteHeader(200)
@@ -66,6 +125,7 @@ func addUser(res http.ResponseWriter, req *http.Request) {
 	_, err := db.Exec(`INSERT INTO Users (name, email, pin, cardno) VALUES (?, ?, ?, ?);`, user.Name, user.Email, user.Pin, user.Card)
 
 	if err != nil {
+		log.Println(err)
 		res.WriteHeader(400)
 	} else {
 		res.WriteHeader(200)
