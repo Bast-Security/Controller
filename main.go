@@ -4,7 +4,6 @@ import (
 	"github.com/grandcat/zeroconf"
 	mqtt "github.com/eclipse/paho.mqtt.golang"
 	_ "github.com/go-sql-driver/mysql"
-	"github.com/go-chi/chi"
 
 	"database/sql"
 	"log"
@@ -59,16 +58,6 @@ func main() {
 	}
 
 	log.Println("Starting REST server.")
-	router := chi.NewRouter()
-	router.Post("/newAdmin", newAdmin)
-	router.Get("/login", getChallenge)
-	router.Post("/login", handleLogin)
-	router.Post("/addUser", addUser)
-	router.Post("/addRole", addRole)
-	router.Post("/addLock", addLock)
-	router.Get("/listUsers", listUsers)
-	router.Get("/listRoles", listRoles)
-	router.Get("/listLocks", listLocks)
-	http.ListenAndServe(":8080", router)
+	http.ListenAndServe(":8080", router())
 }
 

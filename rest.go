@@ -1,7 +1,10 @@
 package main
 
 import (
+	"github.com/go-chi/chi"
 	"github.com/go-chi/render"
+	"github.com/go-chi/jwtauth"
+	jwt "github.com/dgrijalva/jwt-go"
 
 	"math/big"
 	"crypto/ecdsa"
@@ -9,6 +12,42 @@ import (
 	"net/http"
 	"log"
 )
+
+var (
+	tokenAuth *jwtauth.JWTAuth
+	signKey []byte
+)
+
+func init() {
+	signKey = make([]byte, 16)
+	if _, err := rand.Read(signKey); err != nil {
+		log.Fatal("Unable to generate JWT signing key.")
+	}
+
+	tokenAuth = jwtauth.New("HS256", signKey, nil)
+}
+
+func router() http.Handler {
+	router := chi.NewRouter()
+
+	router.Post("/newAdmin", newAdmin)
+	router.Get("/login", getChallenge)
+	router.Post("/login", handleLogin)
+
+	router.Group(func(router chi.Router) {
+		router.Use(jwtauth.Verifier(tokenAuth))
+		router.Use(jwtauth.Authenticator)
+
+		router.Post("/addUser", addUser)
+		router.Post("/addRole", addRole)
+		router.Post("/addLock", addLock)
+		router.Get("/listUsers", listUsers)
+		router.Get("/listRoles", listRoles)
+		router.Get("/listLocks", listLocks)
+	})
+
+	return router
+}
 
 func getChallenge(res http.ResponseWriter, req *http.Request) {
 	user := struct{ id int }{ }
@@ -56,7 +95,11 @@ func handleLogin(res http.ResponseWriter, req *http.Request) {
 	}
 
 	if ecdsa.Verify(&pubKey, challenge, response.r, response.r) {
-		res.WriteHeader(200)
+		if _, token, err := tokenAuth.Encode(jwt.MapClaims{ "uid": response.id }); err != nil {
+			res.WriteHeader(500)
+		} else {
+			res.Write([]byte(token))
+		}
 	} else {
 		res.WriteHeader(400)
 	}
