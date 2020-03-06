@@ -60,6 +60,7 @@ func main() {
 
 	log.Println("Starting REST server.")
 	router := chi.NewRouter()
+	router.Post("/newAdmin", newAdmin)
 	router.Post("/addUser", addUser)
 	router.Post("/addRole", addRole)
 	router.Post("/addLock", addLock)

@@ -3,9 +3,32 @@ package main
 import (
 	"github.com/go-chi/render"
 
+	"io/ioutil"
 	"net/http"
 	"log"
 )
+
+func newAdmin(res http.ResponseWriter, req *http.Request) {
+	key, err := ioutil.ReadAll(req.Body)
+	if err != nil {
+		res.WriteHeader(500)
+		return
+	}
+
+	result, err := db.Exec(`INSERT INTO Admins (pubKey) VALUES (?);`, key);
+	if err != nil {
+		res.WriteHeader(500)
+		return
+	}
+
+	id, err := result.LastInsertId()
+	if err != nil {
+		res.WriteHeader(500)
+		return
+	}
+
+	render.JSON(res, req, map[string]int64{ "id": id })
+}
 
 func addLock(res http.ResponseWriter, req *http.Request) {
 	var door string

@@ -49,9 +49,10 @@ CREATE TABLE Settings (
 );
 
 CREATE TABLE Admins (
+    id INTEGER AUTO_INCREMENT NOT NULL,
     pubKey BINARY(32) NOT NULL,
     challenge BINARY(16),
-    PRIMARY KEY (pubKey)
+    PRIMARY KEY (id)
 );
 
 
