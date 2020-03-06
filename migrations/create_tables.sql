@@ -41,3 +41,17 @@ CREATE TABLE AuthTypes (
     PRIMARY KEY (door, authtype),
     FOREIGN KEY (door) REFERENCES Doors (name)
 );
+
+CREATE TABLE Settings (
+    name VARCHAR(32) NOT NULL,
+    value VARCHAR(32) NOT NULL,
+    PRIMARY KEY (name)
+);
+
+CREATE TABLE Admins (
+    pubKey BINARY(32) NOT NULL,
+    challenge BINARY(16),
+    PRIMARY KEY (pubKey)
+);
+
+
