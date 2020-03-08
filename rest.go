@@ -11,8 +11,11 @@ import (
 	"crypto/tls"
 	"crypto/ecdsa"
 	"crypto/rand"
+	"crypto/hmac"
+	"crypto/sha256"
 	"net/http"
 	"log"
+	"fmt"
 )
 
 var (
@@ -45,8 +48,7 @@ func server() http.Server {
 				tls.TLS_ECDHE_ECDSA_WITH_AES_256_GCM_SHA384,
 				tls.TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256,
 				tls.TLS_ECDHE_ECDSA_WITH_AES_128_GCM_SHA256,
-			},
-		},
+			}, },
 	}
 }
 
@@ -58,6 +60,8 @@ func router() http.Handler {
 	router.Post("/newAdmin", newAdmin)
 	router.Get("/login", getChallenge)
 	router.Post("/login", handleLogin)
+
+	router.Get("/accessRequest", handleAccessRequest)
 
 	router.Group(func(router chi.Router) {
 		router.Use(jwtauth.Verifier(tokenAuth))
@@ -72,6 +76,59 @@ func router() http.Handler {
 	})
 
 	return router
+}
+
+func authenticateLock(door string, tag []byte) bool {
+	var key []byte
+
+	row := db.QueryRow(`SELECT key FROM Doors WHERE name = ?;`, door)
+
+	if err := row.Scan(&key); err == nil {
+		mac := hmac.New(sha256.New, key)
+		mac.Write([]byte(door))
+		expectedMac := mac.Sum(nil)
+		if hmac.Equal(expectedMac, tag) {
+			return true
+		}
+	}
+
+	return false
+}
+
+func handleAccessRequest(res http.ResponseWriter, req *http.Request) {
+	var accessRequest struct { Door string; Method int; Credential string; Tag []byte }
+
+	if err := render.DecodeJSON(req.Body, &accessRequest); err != nil {
+		log.Println(err)
+		res.WriteHeader(400)
+		fmt.Fprintln(res, "Access Denied")
+		return
+	}
+
+	if !authenticateLock(accessRequest.Door, accessRequest.Tag) {
+		log.Printf("Lock '%s' failed to authenticate", accessRequest.Door)
+		res.WriteHeader(400)
+		fmt.Fprintln(res, "Access Denied")
+		return
+	}
+
+	switch accessRequest.Method {
+	case CardOnly:
+		if cardValidate(accessRequest.Door, accessRequest.Credential) {
+			res.WriteHeader(200)
+			fmt.Fprintln(res, "Access Granted")
+			return
+		}
+	case PinOnly:
+		if pinValidate(accessRequest.Door, accessRequest.Credential) {
+			res.WriteHeader(200)
+			fmt.Fprintln(res, "Access Granted")
+			return
+		}
+	}
+
+	res.WriteHeader(400)
+	fmt.Fprintln(res, "Access Denied")
 }
 
 func getChallenge(res http.ResponseWriter, req *http.Request) {

@@ -4,6 +4,13 @@ import (
 	"log"
 )
 
+const (
+	CardOnly = 1
+	PinOnly = 2
+	CardAndPin = 3
+	CardOrPin = -3
+)
+
 func cardValidate(card, door string) (valid bool) {
 	valid = false
 
@@ -15,7 +22,6 @@ func cardValidate(card, door string) (valid bool) {
 		WHERE Permissions.door = ?
 		AND Users.cardno = ?
 		AND (AuthTypes.authType = 2 OR AuthTypes.authType = -3)`, door, card)
-
 	if err != nil {
 		log.Println(err)
 	} else {

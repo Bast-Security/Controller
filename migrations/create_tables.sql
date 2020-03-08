@@ -1,6 +1,7 @@
 
 CREATE TABLE Doors (
     name VARCHAR(32) NOT NULL,
+    key BINARY(32) NOT NULL,
     PRIMARY KEY (name)
 );
 
