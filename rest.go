@@ -2,11 +2,13 @@ package main
 
 import (
 	"github.com/go-chi/chi"
+	"github.com/go-chi/chi/middleware"
 	"github.com/go-chi/render"
 	"github.com/go-chi/jwtauth"
 	jwt "github.com/dgrijalva/jwt-go"
 
 	"math/big"
+	"crypto/tls"
 	"crypto/ecdsa"
 	"crypto/rand"
 	"net/http"
@@ -18,6 +20,10 @@ var (
 	signKey []byte
 )
 
+const (
+	addr = ":8080"
+)
+
 func init() {
 	signKey = make([]byte, 16)
 	if _, err := rand.Read(signKey); err != nil {
@@ -27,8 +33,27 @@ func init() {
 	tokenAuth = jwtauth.New("HS256", signKey, nil)
 }
 
+func server() http.Server {
+	return http.Server{
+		Addr: addr,
+		Handler: router(),
+		TLSConfig: &tls.Config{
+			MinVersion: tls.VersionTLS13,
+			PreferServerCipherSuites: true,
+			CipherSuites: []uint16{
+				tls.TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384,
+				tls.TLS_ECDHE_ECDSA_WITH_AES_256_GCM_SHA384,
+				tls.TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256,
+				tls.TLS_ECDHE_ECDSA_WITH_AES_128_GCM_SHA256,
+			},
+		},
+	}
+}
+
 func router() http.Handler {
 	router := chi.NewRouter()
+
+	router.Use(middleware.Logger)
 
 	router.Post("/newAdmin", newAdmin)
 	router.Get("/login", getChallenge)

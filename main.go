@@ -8,7 +8,6 @@ import (
 	"database/sql"
 	"log"
 	"net"
-	"net/http"
 	"fmt"
 )
 
@@ -58,6 +57,7 @@ func main() {
 	}
 
 	log.Println("Starting REST server.")
-	http.ListenAndServe(":8080", router())
+	httpServer := server()
+	httpServer.ListenAndServeTLS("pki/bast-root.crt", "pki/bast-root.key")
 }
 
