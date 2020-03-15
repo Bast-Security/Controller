@@ -1,3 +1,5 @@
+INSERT INTO Settings VALUES ('name', 'Orphaned System');
+
 INSERT INTO `Doors` VALUES ('Main Entrance'),('Rear Entrance'),('Research Lab'),('Server Room'),('Side Entrance');
 
 INSERT INTO `Roles` VALUES ('Admin'),('Developer'),('Guest'),('IT'),('Researcher'),('Staff');

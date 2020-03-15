@@ -48,7 +48,8 @@ func server() http.Server {
 				tls.TLS_ECDHE_ECDSA_WITH_AES_256_GCM_SHA384,
 				tls.TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256,
 				tls.TLS_ECDHE_ECDSA_WITH_AES_128_GCM_SHA256,
-			}, },
+			},
+		},
 	}
 }
 
@@ -57,6 +58,7 @@ func router() http.Handler {
 
 	router.Use(middleware.Logger)
 
+	router.Get("/isOrphan", handleIsOrphan)
 	router.Post("/newAdmin", newAdmin)
 	router.Get("/login", getChallenge)
 	router.Post("/login", handleLogin)
@@ -76,6 +78,16 @@ func router() http.Handler {
 	})
 
 	return router
+}
+
+func handleIsOrphan(res http.ResponseWriter, req *http.Request) {
+	rows, err := db.Query(`SELECT * FROM Admins;`)
+	if err != nil || !rows.Next() {
+		log.Println(err)
+		res.WriteHeader(200)
+	} else {
+		res.WriteHeader(400)
+	}
 }
 
 func authenticateLock(door string, tag []byte) bool {

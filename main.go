@@ -22,15 +22,6 @@ func main() {
 		err error
 	)
 
-	log.Println("Starting MDNS server.")
-	if ifaces, err := net.Interfaces(); err == nil {
-		mdnsServer, err = zeroconf.Register("Bast Controller", SERVICE, DOMAIN, PORT, nil, ifaces)
-	}
-	if err != nil {
-		log.Fatal(err)
-	}
-	defer mdnsServer.Shutdown()
-
 	log.Println("Opening SQL connection.")
 	if db, err = sql.Open("mysql", "bast:bast@/bast"); err != nil {
 		log.Fatal(err)
@@ -41,6 +32,15 @@ func main() {
 	if name, err = getSetting("name"); err != nil {
 		log.Fatal(err)
 	}
+
+	log.Println("Starting MDNS server.")
+	if ifaces, err := net.Interfaces(); err == nil {
+		mdnsServer, err = zeroconf.Register(name, SERVICE, DOMAIN, PORT, nil, ifaces)
+	}
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer mdnsServer.Shutdown()
 
 	log.Println("Connecting to MQTT broker.")
 	mqttClient := mqtt.NewClient(mqtt.NewClientOptions().AddBroker("tcp://localhost:1883"))
