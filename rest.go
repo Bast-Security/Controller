@@ -218,7 +218,7 @@ func newAdmin(res http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	result, err := db.Exec(`INSERT INTO Admins (keyX, keyY) VALUES (?, ?);`, pubKey.X, pubKey.Y);
+	result, err := db.Exec(`INSERT INTO Admins (keyX, keyY) VALUES (?, ?);`, pubKey.X.String(), pubKey.Y.String());
 	if err != nil {
 		log.Println(err)
 		res.WriteHeader(500)
