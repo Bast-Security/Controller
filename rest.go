@@ -218,6 +218,16 @@ func newAdmin(res http.ResponseWriter, req *http.Request) {
 		return
 	}
 
+	if name, ok := pubKey["name"]; ok {
+		if _, err := db.Exec(
+			`IF EXISTS(SELECT * FROM Settings WHERE name="name")
+				UPDATE Settings SET value=? WHERE name="name"
+			ELSE
+				INSERT INTO Settings ("name", ?);`, name); err != nil {
+			log.Println(err)
+		}
+	}
+
 	result, err := db.Exec(`INSERT INTO Admins (keyX, keyY) VALUES (?, ?);`, pubKey["X"], pubKey["Y"]);
 	if err != nil {
 		log.Println(err)
