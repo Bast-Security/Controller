@@ -32,8 +32,7 @@ func init() {
 	signKey = make([]byte, 16)
 	if _, err := rand.Read(signKey); err != nil {
 		log.Fatal("Unable to generate JWT signing key.")
-	}
-
+	} 
 	tokenAuth = jwtauth.New("HS256", signKey, nil)
 }
 
@@ -70,6 +69,7 @@ func router() http.Handler {
 		router.Use(jwtauth.Verifier(tokenAuth))
 		router.Use(jwtauth.Authenticator)
 
+		router.Post("/setName", setName)
 		router.Post("/addUser", addUser)
 		router.Post("/addRole", addRole)
 		router.Post("/addLock", addLock)
@@ -218,25 +218,12 @@ func newAdmin(res http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	/*
-	if name, ok := pubKey["name"]; ok {
-		if _, err := db.Exec(
-			`IF EXISTS(SELECT * FROM Settings WHERE name="name")
-				UPDATE Settings SET value=? WHERE name="name"
-			ELSE
-				INSERT INTO Settings ("name", ?);`, name); err != nil {
-			log.Println(err)
-		}
-	}
-	*/
-
 	result, err := db.Exec(`INSERT INTO Admins (keyX, keyY) VALUES (?, ?);`, pubKey.X, pubKey.Y);
 	if err != nil {
 		log.Println(err)
 		res.WriteHeader(500)
 		return
-	}
-
+	} 
 	id, err := result.LastInsertId()
 	if err != nil {
 		log.Println(err)
@@ -245,6 +232,27 @@ func newAdmin(res http.ResponseWriter, req *http.Request) {
 	}
 
 	render.JSON(res, req, map[string]int64{ "id": id })
+}
+
+func setName(res http.ResponseWriter, req *http.Request) {
+	var args map[string]string
+
+	if err := render.DecodeJSON(req.Body, &args); err != nil {
+		log.Println(err)
+		res.WriteHeader(400)
+		return
+	}
+
+	if name, ok := args["name"]; ok {
+		if _, err := db.Exec(
+			`IF EXISTS(SELECT * FROM Settings WHERE name="name")
+				UPDATE Settings SET value=? WHERE name="name"
+			ELSE
+				INSERT INTO Settings ("name", ?);`, name); err != nil {
+			log.Println(err)
+			res.WriteHeader(400)
+		}
+	}
 }
 
 func addLock(res http.ResponseWriter, req *http.Request) {
