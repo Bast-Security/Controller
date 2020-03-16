@@ -9,6 +9,7 @@ import (
 
 	"math/big"
 	"crypto/tls"
+	"crypto/elliptic"
 	"crypto/ecdsa"
 	"crypto/rand"
 	"crypto/hmac"
@@ -187,7 +188,7 @@ func handleLogin(res http.ResponseWriter, req *http.Request) {
 
 	var (
 		challenge []byte
-		pubKey ecdsa.PublicKey
+		pubKey ecdsa.PublicKey = ecdsa.PublicKey{ Curve: elliptic.P384() }
 	)
 
 	row := db.QueryRow(`SELECT challenge, keyX, keyY FROM Admins WHERE id = ?;`, response.id)
@@ -209,7 +210,7 @@ func handleLogin(res http.ResponseWriter, req *http.Request) {
 }
 
 func newAdmin(res http.ResponseWriter, req *http.Request) {
-	var pubKey ecdsa.PublicKey
+	var pubKey map[string]string
 
 	if err := render.DecodeJSON(req.Body, &pubKey); err != nil {
 		log.Println(err)
@@ -217,7 +218,7 @@ func newAdmin(res http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	result, err := db.Exec(`INSERT INTO Admins (keyX, keyY) VALUES (?, ?);`, pubKey.X.String(), pubKey.Y.String());
+	result, err := db.Exec(`INSERT INTO Admins (keyX, keyY) VALUES (?, ?);`, pubKey["X"], pubKey["Y"]);
 	if err != nil {
 		log.Println(err)
 		res.WriteHeader(500)
