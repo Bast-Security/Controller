@@ -14,6 +14,7 @@ import (
 	"crypto/rand"
 	"crypto/hmac"
 	"crypto/sha256"
+	"encoding/asn1"
 	"net/http"
 	"log"
 	"fmt"
@@ -145,22 +146,6 @@ func handleAccessRequest(res http.ResponseWriter, req *http.Request) {
 }
 
 func getChallenge(res http.ResponseWriter, req *http.Request) {
-	var (
-		user map[string]int
-		id int
-		ok bool
-	)
-
-	if err := render.DecodeJSON(req.Body, &user); err != nil {
-		log.Println(err)
-		res.WriteHeader(400)
-		return
-	}
-	if id, ok = user["id"]; !ok {
-		res.WriteHeader(400)
-		return
-	}
-
 	challengeData := make([]byte, 16)
 	if _, err := rand.Read(challengeData); err != nil {
 		log.Println(err)
@@ -168,7 +153,7 @@ func getChallenge(res http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	if _, err := db.Exec(`UPDATE Admins SET challenge = ? WHERE id = ?;`, challengeData, id); err != nil {
+	if _, err := db.Exec(`UPDATE Admins SET challenge = ? WHERE id = 1;`, challengeData); err != nil {
 		log.Println(err)
 		res.WriteHeader(400)
 		return
@@ -179,7 +164,7 @@ func getChallenge(res http.ResponseWriter, req *http.Request) {
 }
 
 func handleLogin(res http.ResponseWriter, req *http.Request) {
-	response := struct{ id int; r, s *big.Int }{ }
+	response := struct{ Response []byte }{ }
 	if err := render.DecodeJSON(req.Body, &response); err != nil {
 		log.Println(err)
 		res.WriteHeader(400)
@@ -191,15 +176,25 @@ func handleLogin(res http.ResponseWriter, req *http.Request) {
 		pubKey ecdsa.PublicKey = ecdsa.PublicKey{ Curve: elliptic.P384() }
 	)
 
-	row := db.QueryRow(`SELECT challenge, keyX, keyY FROM Admins WHERE id = ?;`, response.id)
+	row := db.QueryRow(`SELECT challenge, keyX, keyY FROM Admins WHERE id = 1;`)
 	if err := row.Scan(&challenge, pubKey.X, pubKey.Y); err != nil {
 		log.Println(err)
 		res.WriteHeader(400)
 		return
 	}
 
-	if ecdsa.Verify(&pubKey, challenge, response.r, response.r) {
-		if _, token, err := tokenAuth.Encode(jwt.MapClaims{ "uid": response.id }); err != nil {
+	sig := &struct{ R, S *big.Int }{}
+	if _, err := asn1.Unmarshal(response.Response, sig); err != nil {
+		res.WriteHeader(400)
+		return
+	}
+
+	sha := sha256.New()
+	sha.Write(challenge)
+	hashed := sha.Sum(nil)
+
+	if ecdsa.Verify(&pubKey, hashed, sig.R, sig.S) {
+		if _, token, err := tokenAuth.Encode(jwt.MapClaims{ "uid": 1 }); err != nil {
 			res.WriteHeader(500)
 		} else {
 			res.Write([]byte(token))
@@ -218,20 +213,14 @@ func newAdmin(res http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	result, err := db.Exec(`INSERT INTO Admins (keyX, keyY) VALUES (?, ?);`, pubKey.X.String(), pubKey.Y.String());
-	if err != nil {
-		log.Println(err)
-		res.WriteHeader(500)
-		return
-	} 
-	id, err := result.LastInsertId()
+	_, err := db.Exec(`INSERT INTO Admins (id, keyX, keyY) VALUES (1, ?, ?);`, pubKey.X.String(), pubKey.Y.String());
 	if err != nil {
 		log.Println(err)
 		res.WriteHeader(500)
 		return
 	}
 
-	render.JSON(res, req, map[string]int64{ "id": id })
+	res.WriteHeader(200)
 }
 
 func setName(res http.ResponseWriter, req *http.Request) {
