@@ -173,7 +173,7 @@ func handleLogin(res http.ResponseWriter, req *http.Request) {
 
 	var (
 		challenge []byte
-		pubKey ecdsa.PublicKey = ecdsa.PublicKey{ Curve: elliptic.P384() }
+		pubKey ecdsa.PublicKey = ecdsa.PublicKey{ Curve: elliptic.P384(), X: new(big.Int), Y: new(big.Int) }
 		x []byte
 		y []byte
 	)
