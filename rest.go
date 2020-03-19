@@ -184,8 +184,16 @@ func handleLogin(res http.ResponseWriter, req *http.Request) {
 		res.WriteHeader(400)
 		return
 	}
-	pubKey.X = pubKey.X.SetBytes(x)
-	pubKey.Y = pubKey.Y.SetBytes(y)
+	if err := pubKey.X.UnmarshalText(x); err != nil {
+		log.Println(err)
+		res.WriteHeader(400)
+		return
+	}
+	if err := pubKey.Y.UnmarshalText(y); err != nil {
+		log.Println(err)
+		res.WriteHeader(400)
+		return
+	}
 
 	sig := &struct{ R, S *big.Int }{}
 	if _, err := asn1.Unmarshal(response.Response, sig); err != nil {
