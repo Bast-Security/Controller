@@ -177,7 +177,7 @@ func handleLogin(res http.ResponseWriter, req *http.Request) {
 	)
 
 	row := db.QueryRow(`SELECT challenge, keyX, keyY FROM Admins WHERE id = 1;`)
-	if err := row.Scan(&challenge, pubKey.X, pubKey.Y); err != nil {
+	if err := row.Scan(&challenge, &pubKey.X, &pubKey.Y); err != nil {
 		log.Println(err)
 		res.WriteHeader(400)
 		return
