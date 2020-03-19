@@ -2,13 +2,12 @@ package main
 
 import (
 	"github.com/grandcat/zeroconf"
-	mqtt "github.com/eclipse/paho.mqtt.golang"
-	_ "github.com/go-sql-driver/mysql"
+	_ "github.com/mattn/go-sqlite3"
 
 	"database/sql"
+	"io/ioutil"
 	"log"
 	"net"
-	"fmt"
 )
 
 var (
@@ -23,14 +22,28 @@ func main() {
 	)
 
 	log.Println("Opening SQL connection.")
-	if db, err = sql.Open("mysql", "bast:bast@/bast"); err != nil {
+	if db, err = sql.Open("sqlite3", "./bast.db"); err != nil {
 		log.Fatal(err)
 	}
 	defer db.Close()
 
-	log.Println("Loading system settings.")
-	if name, err = getSetting("name"); err != nil {
-		log.Fatal(err)
+	for dbOk := false; !dbOk; {
+		log.Println("Loading system settings.")
+		if name, err = getSetting("name"); err != nil {
+			log.Println(err)
+			log.Println("Creating initial database")
+
+			query, err := ioutil.ReadFile("migrations/create_tables.sql")
+			if err != nil {
+				log.Fatal("Failed to read sql script", err)	
+			}
+
+			if _, err := db.Exec(string(query)); err != nil {
+				log.Fatal("Failed to execute sql script", err)
+			}
+		} else {
+			dbOk = true
+		}
 	}
 
 	log.Println("Starting MDNS server.")
@@ -41,20 +54,6 @@ func main() {
 		log.Fatal(err)
 	}
 	defer mdnsServer.Shutdown()
-
-	log.Println("Connecting to MQTT broker.")
-	mqttClient := mqtt.NewClient(mqtt.NewClientOptions().AddBroker("tcp://localhost:1883"))
-	if token := mqttClient.Connect(); token.Wait() && token.Error() != nil {
-		log.Println(token.Error())
-	} else {
-		if token := mqttClient.Subscribe(fmt.Sprintf("bast/%s/+/pin", name), 0, handlePin); token.Wait() && token.Error() != nil {
-			log.Println(token.Error())
-		}
-
-		if token := mqttClient.Subscribe(fmt.Sprintf("bast/%s/+/card", name), 0, handleCard); token.Wait() && token.Error() != nil {
-			log.Println(token.Error())
-		}
-	}
 
 	log.Println("Starting REST server.")
 	httpServer := server()

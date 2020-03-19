@@ -6,7 +6,7 @@ CREATE TABLE Doors (
 );
 
 CREATE TABLE Users (
-    id INTEGER NOT NULL AUTO_INCREMENT,
+    id INTEGER NOT NULL,
     name VARCHAR(32) NOT NULL,
     email VARCHAR(32) NOT NULL,
     pin VARCHAR(32),
@@ -50,11 +50,12 @@ CREATE TABLE Settings (
 );
 
 CREATE TABLE Admins (
-    id INTEGER AUTO_INCREMENT NOT NULL,
+    id INTEGER NOT NULL,
     keyX BLOB NOT NULL,
     keyY BLOB NOT NULL,
     challenge BINARY(16),
     PRIMARY KEY (id)
 );
 
+INSERT INTO Settings (name, value) VALUES ("name", "bast controller");
 
