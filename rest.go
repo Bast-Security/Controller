@@ -174,17 +174,22 @@ func handleLogin(res http.ResponseWriter, req *http.Request) {
 	var (
 		challenge []byte
 		pubKey ecdsa.PublicKey = ecdsa.PublicKey{ Curve: elliptic.P384() }
+		x []byte
+		y []byte
 	)
 
 	row := db.QueryRow(`SELECT challenge, keyX, keyY FROM Admins WHERE id = 1;`)
-	if err := row.Scan(&challenge, &pubKey.X, &pubKey.Y); err != nil {
+	if err := row.Scan(&challenge, &x, &y); err != nil {
 		log.Println(err)
 		res.WriteHeader(400)
 		return
 	}
+	pubKey.X = pubKey.X.SetBytes(x)
+	pubKey.Y = pubKey.Y.SetBytes(y)
 
 	sig := &struct{ R, S *big.Int }{}
 	if _, err := asn1.Unmarshal(response.Response, sig); err != nil {
+		log.Println(err)
 		res.WriteHeader(400)
 		return
 	}
@@ -195,11 +200,13 @@ func handleLogin(res http.ResponseWriter, req *http.Request) {
 
 	if ecdsa.Verify(&pubKey, hashed, sig.R, sig.S) {
 		if _, token, err := tokenAuth.Encode(jwt.MapClaims{ "uid": 1 }); err != nil {
+			log.Println(err)
 			res.WriteHeader(500)
 		} else {
 			res.Write([]byte(token))
 		}
 	} else {
+		log.Println("Verify failed")
 		res.WriteHeader(400)
 	}
 }
