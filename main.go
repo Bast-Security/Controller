@@ -5,19 +5,21 @@ import (
 	_ "github.com/mattn/go-sqlite3"
 
 	"database/sql"
+	"os"
+	"os/signal"
 	"io/ioutil"
 	"log"
 	"net"
 )
 
 var (
+	mdnsServer *zeroconf.Server
 	db *sql.DB
 	name string
 )
 
 func main() {
 	var (
-		mdnsServer *zeroconf.Server
 		err error
 	)
 
@@ -25,7 +27,6 @@ func main() {
 	if db, err = sql.Open("sqlite3", "./bast.db"); err != nil {
 		log.Fatal(err)
 	}
-	defer db.Close()
 
 	for dbOk := false; !dbOk; {
 		log.Println("Loading system settings.")
@@ -53,10 +54,16 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
-	defer mdnsServer.Shutdown()
 
 	log.Println("Starting REST server.")
 	httpServer := server()
-	httpServer.ListenAndServeTLS("pki/bast-root.crt", "pki/bast-root.key")
+	go httpServer.ListenAndServeTLS("pki/bast-root.crt", "pki/bast-root.key")
+
+	sig := make(chan os.Signal)
+	signal.Notify(sig, os.Interrupt)
+	<-sig
+
+	db.Close()
+	mdnsServer.Shutdown()
 }
 

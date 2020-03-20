@@ -5,6 +5,7 @@ import (
 	"github.com/go-chi/chi/middleware"
 	"github.com/go-chi/render"
 	"github.com/go-chi/jwtauth"
+	"github.com/grandcat/zeroconf"
 	jwt "github.com/dgrijalva/jwt-go"
 
 	"math/big"
@@ -16,6 +17,7 @@ import (
 	"crypto/sha256"
 	"encoding/asn1"
 	"net/http"
+	"net"
 	"log"
 	"fmt"
 )
@@ -33,7 +35,7 @@ func init() {
 	signKey = make([]byte, 16)
 	if _, err := rand.Read(signKey); err != nil {
 		log.Fatal("Unable to generate JWT signing key.")
-	} 
+	}
 	tokenAuth = jwtauth.New("HS256", signKey, nil)
 }
 
@@ -84,6 +86,8 @@ func router() http.Handler {
 
 func handleIsOrphan(res http.ResponseWriter, req *http.Request) {
 	rows, err := db.Query(`SELECT * FROM Admins;`)
+	defer rows.Close()
+
 	if err != nil || !rows.Next() {
 		log.Println(err)
 		res.WriteHeader(200)
@@ -179,6 +183,7 @@ func handleLogin(res http.ResponseWriter, req *http.Request) {
 	)
 
 	row := db.QueryRow(`SELECT challenge, keyX, keyY FROM Admins WHERE id = 1;`)
+
 	if err := row.Scan(&challenge, &x, &y); err != nil {
 		log.Println(err)
 		res.WriteHeader(400)
@@ -239,24 +244,35 @@ func newAdmin(res http.ResponseWriter, req *http.Request) {
 }
 
 func setName(res http.ResponseWriter, req *http.Request) {
-	var args map[string]string
+	var (
+		args map[string]string
+		err error
+		ok bool
+	)
 
-	if err := render.DecodeJSON(req.Body, &args); err != nil {
+	if err = render.DecodeJSON(req.Body, &args); err != nil {
 		log.Println(err)
 		res.WriteHeader(400)
 		return
 	}
 
-	if name, ok := args["name"]; ok {
-		if _, err := db.Exec(
-			`IF EXISTS(SELECT * FROM Settings WHERE name="name")
-				UPDATE Settings SET value=? WHERE name="name"
-			ELSE
-				INSERT INTO Settings ("name", ?);`, name); err != nil {
+	if name, ok = args["name"]; ok {
+		if _, err := db.Exec(`UPDATE Settings SET value=? WHERE name="name";`, name); err != nil {
 			log.Println(err)
 			res.WriteHeader(400)
+			return
+		}
+
+		mdnsServer.Shutdown()
+		if ifaces, err := net.Interfaces(); err == nil {
+			mdnsServer, err = zeroconf.Register(name, SERVICE, DOMAIN, PORT, nil, ifaces)
+		}
+		if err != nil {
+			log.Fatal(err)
 		}
 	}
+
+	res.WriteHeader(200)
 }
 
 func addLock(res http.ResponseWriter, req *http.Request) {
@@ -310,6 +326,7 @@ func listLocks(res http.ResponseWriter, req *http.Request) {
 
 	//variable will save the querry command for locks
 	rows, err := db.Query(`select Doors.name from Doors`)
+	defer rows.Close()
 
 	//if statement makes sure that the query was a success; if successful then each row in the Doors scheme is read
 	if err != nil{
@@ -343,6 +360,7 @@ func listRoles(res http.ResponseWriter, req *http.Request) {
 
 	//variable will save the querry command
 	rows, err := db.Query(`select Roles.name from Roles`)
+	defer rows.Close()
 
 	//if statement makes to sure that query was a success; if successful then each row in the Roles scheme is read
 	if err != nil {
@@ -376,6 +394,7 @@ func listUsers(res http.ResponseWriter, req *http.Request) {
 
 	//variable will save the querry command
 	rows, err := db.Query(`select Users.id, Users.name, Users.email, Users.pin, Users.cardno from Users`)
+	defer rows.Close()
 	
 	//if statement makes to sure that query was a success; if successful then each row in the Users scheme is read
 	if err != nil {
