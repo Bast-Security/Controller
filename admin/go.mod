@@ -1,4 +1,4 @@
-module bast-security/controller
+module bast-security/controller/admin
 
 go 1.13
 

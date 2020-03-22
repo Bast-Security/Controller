@@ -2,11 +2,12 @@
 CREATE TABLE Doors (
     name VARCHAR(32) NOT NULL,
     key BINARY(32) NOT NULL,
+    authType INTEGER NOT NULL,
     PRIMARY KEY (name)
 );
 
 CREATE TABLE Users (
-    id INTEGER NOT NULL,
+    id INTEGER NOT NULL AUTO_INCREMENT,
     name VARCHAR(32) NOT NULL,
     email VARCHAR(32) NOT NULL,
     pin VARCHAR(32),
@@ -36,26 +37,15 @@ CREATE TABLE Permissions (
     FOREIGN KEY (door) REFERENCES Doors (name)
 );
 
-CREATE TABLE AuthTypes (
-    door VARCHAR(32) NOT NULL,
-    authType INTEGER NOT NULL,
-    PRIMARY KEY (door, authtype),
-    FOREIGN KEY (door) REFERENCES Doors (name)
-);
-
-CREATE TABLE Settings (
-    name VARCHAR(32) NOT NULL,
-    value VARCHAR(32) NOT NULL,
-    PRIMARY KEY (name)
-);
-
 CREATE TABLE Admins (
     id INTEGER NOT NULL,
+    identityKey BLOB NOT NULL,
     keyX BLOB NOT NULL,
     keyY BLOB NOT NULL,
     challenge BINARY(16),
+    name VARCHAR(32),
+    email VARCHAR(32),
+    phone VARCHAR(32),
     PRIMARY KEY (id)
 );
-
-INSERT INTO Settings (name, value) VALUES ("name", "bast controller");
 
