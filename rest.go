@@ -5,7 +5,6 @@ import (
 	"github.com/go-chi/chi/middleware"
 	"github.com/go-chi/render"
 	"github.com/go-chi/jwtauth"
-	"github.com/grandcat/zeroconf"
 	jwt "github.com/dgrijalva/jwt-go"
 
 	"math/big"
@@ -13,22 +12,15 @@ import (
 	"crypto/elliptic"
 	"crypto/ecdsa"
 	"crypto/rand"
-	"crypto/hmac"
 	"crypto/sha256"
 	"encoding/asn1"
 	"net/http"
-	"net"
 	"log"
-	"fmt"
 )
 
 var (
 	tokenAuth *jwtauth.JWTAuth
 	signKey []byte
-)
-
-const (
-	addr = ":8080"
 )
 
 func init() {
@@ -61,18 +53,15 @@ func router() http.Handler {
 
 	router.Use(middleware.Logger)
 
-	router.Get("/isOrphan", handleIsOrphan)
-	router.Post("/newAdmin", newAdmin)
+	router.Post("/register", handleRegister)
 	router.Get("/login", getChallenge)
 	router.Post("/login", handleLogin)
-
-	router.Get("/accessRequest", handleAccessRequest)
 
 	router.Group(func(router chi.Router) {
 		router.Use(jwtauth.Verifier(tokenAuth))
 		router.Use(jwtauth.Authenticator)
 
-		router.Post("/setName", setName)
+		router.Post("/addSystem", addSystem)
 		router.Post("/addUser", addUser)
 		router.Post("/addRole", addRole)
 		router.Post("/addLock", addLock)
@@ -84,69 +73,8 @@ func router() http.Handler {
 	return router
 }
 
-func handleIsOrphan(res http.ResponseWriter, req *http.Request) {
-	rows, err := db.Query(`SELECT * FROM Admins;`)
-	defer rows.Close()
-
-	if err != nil || !rows.Next() {
-		log.Println(err)
-		res.WriteHeader(200)
-	} else {
-		res.WriteHeader(400)
-	}
-}
-
-func authenticateLock(door string, tag []byte) bool {
-	var key []byte
-
-	row := db.QueryRow(`SELECT key FROM Doors WHERE name = ?;`, door)
-
-	if err := row.Scan(&key); err == nil {
-		mac := hmac.New(sha256.New, key)
-		mac.Write([]byte(door))
-		expectedMac := mac.Sum(nil)
-		if hmac.Equal(expectedMac, tag) {
-			return true
-		}
-	}
-
-	return false
-}
-
-func handleAccessRequest(res http.ResponseWriter, req *http.Request) {
-	var accessRequest struct { Door string; Method int; Credential string; Tag []byte }
-
-	if err := render.DecodeJSON(req.Body, &accessRequest); err != nil {
-		log.Println(err)
-		res.WriteHeader(400)
-		fmt.Fprintln(res, "Access Denied")
-		return
-	}
-
-	if !authenticateLock(accessRequest.Door, accessRequest.Tag) {
-		log.Printf("Lock '%s' failed to authenticate", accessRequest.Door)
-		res.WriteHeader(400)
-		fmt.Fprintln(res, "Access Denied")
-		return
-	}
-
-	switch accessRequest.Method {
-	case CardOnly:
-		if cardValidate(accessRequest.Door, accessRequest.Credential) {
-			res.WriteHeader(200)
-			fmt.Fprintln(res, "Access Granted")
-			return
-		}
-	case PinOnly:
-		if pinValidate(accessRequest.Door, accessRequest.Credential) {
-			res.WriteHeader(200)
-			fmt.Fprintln(res, "Access Granted")
-			return
-		}
-	}
-
-	res.WriteHeader(400)
-	fmt.Fprintln(res, "Access Denied")
+func addSystem(res http.ResponseWriter, req *http.Request) {
+	res.WriteHeader(500)
 }
 
 func getChallenge(res http.ResponseWriter, req *http.Request) {
@@ -224,7 +152,7 @@ func handleLogin(res http.ResponseWriter, req *http.Request) {
 	}
 }
 
-func newAdmin(res http.ResponseWriter, req *http.Request) {
+func handleRegister(res http.ResponseWriter, req *http.Request) {
 	var pubKey ecdsa.PublicKey
 
 	if err := render.DecodeJSON(req.Body, &pubKey); err != nil {
@@ -233,43 +161,11 @@ func newAdmin(res http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	_, err := db.Exec(`INSERT INTO Admins (id, keyX, keyY) VALUES (1, ?, ?);`, pubKey.X.String(), pubKey.Y.String());
+	_, err := db.Exec(`INSERT INTO Admins (keyX, keyY) VALUES (?, ?);`, pubKey.X.String(), pubKey.Y.String());
 	if err != nil {
 		log.Println(err)
 		res.WriteHeader(500)
 		return
-	}
-
-	res.WriteHeader(200)
-}
-
-func setName(res http.ResponseWriter, req *http.Request) {
-	var (
-		args map[string]string
-		err error
-		ok bool
-	)
-
-	if err = render.DecodeJSON(req.Body, &args); err != nil {
-		log.Println(err)
-		res.WriteHeader(400)
-		return
-	}
-
-	if name, ok = args["name"]; ok {
-		if _, err := db.Exec(`UPDATE Settings SET value=? WHERE name="name";`, name); err != nil {
-			log.Println(err)
-			res.WriteHeader(400)
-			return
-		}
-
-		mdnsServer.Shutdown()
-		if ifaces, err := net.Interfaces(); err == nil {
-			mdnsServer, err = zeroconf.Register(name, SERVICE, DOMAIN, PORT, nil, ifaces)
-		}
-		if err != nil {
-			log.Fatal(err)
-		}
 	}
 
 	res.WriteHeader(200)
@@ -395,7 +291,7 @@ func listUsers(res http.ResponseWriter, req *http.Request) {
 	//variable will save the querry command
 	rows, err := db.Query(`select Users.id, Users.name, Users.email, Users.pin, Users.cardno from Users`)
 	defer rows.Close()
-	
+
 	//if statement makes to sure that query was a success; if successful then each row in the Users scheme is read
 	if err != nil {
 		log.Println(err)
@@ -409,7 +305,7 @@ func listUsers(res http.ResponseWriter, req *http.Request) {
 				log.Println(err)
 				return
 			}
-			
+
 			//a new user is added to the array
 			users = append(users, user)
 		}
@@ -417,7 +313,7 @@ func listUsers(res http.ResponseWriter, req *http.Request) {
 			log.Println(err)
 		}
 	}
-	
+
 	//converts array into a JSON and sends it to requestor
 	render.JSON(res, req, users)
 }

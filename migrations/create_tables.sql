@@ -1,27 +1,23 @@
-
-CREATE TABLE Doors (
+CREATE TABLE IF NOT EXISTS Doors (
     name VARCHAR(32) NOT NULL,
-    key BINARY(32) NOT NULL,
-    authType INTEGER NOT NULL,
     PRIMARY KEY (name)
 );
 
-CREATE TABLE Users (
+CREATE TABLE IF NOT EXISTS Users (
     id INTEGER NOT NULL AUTO_INCREMENT,
     name VARCHAR(32) NOT NULL,
     email VARCHAR(32) NOT NULL,
     pin VARCHAR(32),
     cardno INTEGER,
-    lastaccess TIMESTAMP,
     PRIMARY KEY(id)
 );
 
-CREATE TABLE Roles (
+CREATE TABLE IF NOT EXISTS Roles (
     name VARCHAR(32) NOT NULL,
     PRIMARY KEY (name)
 );
 
-CREATE TABLE UserRole (
+CREATE TABLE IF NOT EXISTS UserRole (
     userid INTEGER NOT NULL,
     role VARCHAR(32) NOT NULL,
     PRIMARY KEY (userid, role),
@@ -29,7 +25,7 @@ CREATE TABLE UserRole (
     FOREIGN KEY (role) REFERENCES Roles(name)
 );
 
-CREATE TABLE Permissions (
+CREATE TABLE IF NOT EXISTS Permissions (
     role VARCHAR(32) NOT NULL,
     door VARCHAR(32) NOT NULL,
     PRIMARY KEY (role, door),
@@ -37,9 +33,8 @@ CREATE TABLE Permissions (
     FOREIGN KEY (door) REFERENCES Doors (name)
 );
 
-CREATE TABLE Admins (
-    id INTEGER NOT NULL,
-    identityKey BLOB NOT NULL,
+CREATE TABLE IF NOT EXISTS Admins (
+    id INTEGER NOT NULL AUTO_INCREMENT,
     keyX BLOB NOT NULL,
     keyY BLOB NOT NULL,
     challenge BINARY(16),
@@ -47,5 +42,20 @@ CREATE TABLE Admins (
     email VARCHAR(32),
     phone VARCHAR(32),
     PRIMARY KEY (id)
+);
+
+CREATE TABLE IF NOT EXISTS Systems (
+    id INTEGER NOT NULL AUTO_INCREMENT,
+    name VARCHAR(32) NOT NULL,
+    identityKey BLOB NOT NULL,
+    PRIMARY KEY (id)
+);
+
+CREATE TABLE IF NOT EXISTS AdminSystem (
+    admin INTEGER NOT NULL,
+    system INTEGER NOT NULL,
+    PRIMARY KEY (admin, system),
+    FOREIGN KEY (admin) REFERENCES Admins (id),
+    FOREIGN KEY (system) REFERENCES Systems (id)
 );
 

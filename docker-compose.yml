@@ -1,0 +1,20 @@
+version: '3'
+services:
+    database:
+        image: "mariadb:latest"
+        environment:
+            MYSQL_RANDOM_ROOT_PASSWORD: true
+            MYSQL_DATABASE: bast
+            MYSQL_USER: bast
+            MYSQL_PASSWORD: bast
+        ports:
+            - 3306:3306
+        volumes:
+            - ./migrations:/docker-entrypoint-initdb.d:ro,z
+
+    bast:
+        build: .
+        ports:
+            - 8080:8080
+        depends_on: database
+
