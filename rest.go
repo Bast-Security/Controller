@@ -23,6 +23,34 @@ var (
 	signKey []byte
 )
 
+type Door struct {
+	Name string
+	Method int
+}
+
+type Role struct {
+	Name string
+}
+
+type User struct {
+	Id int64
+	Name string
+	Email string
+	Pin string
+	CardNo string
+}
+
+type Admin struct {
+	Id int64
+	KeyX *big.Int
+	KeyY *big.Int
+	Challenge []byte
+	Response []byte
+	Name string
+	Email string
+	Phone string
+}
+
 func init() {
 	signKey = make([]byte, 16)
 	if _, err := rand.Read(signKey); err != nil {
@@ -54,7 +82,7 @@ func router() http.Handler {
 	router.Use(middleware.Logger)
 
 	router.Post("/register", handleRegister)
-	router.Get("/login", getChallenge)
+	router.Post("/challenge", getChallenge)
 	router.Post("/login", handleLogin)
 
 	router.Group(func(router chi.Router) {
@@ -85,19 +113,26 @@ func getChallenge(res http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	if _, err := db.Exec(`UPDATE Admins SET challenge = ? WHERE id = 1;`, challengeData); err != nil {
+	var user Admin
+	if err := render.DecodeJSON(req.Body, &user); err != nil {
 		log.Println(err)
 		res.WriteHeader(400)
 		return
 	}
 
-	challenge := map[string][]byte{ "challenge": challengeData }
-	render.JSON(res, req, challenge)
+	if _, err := db.Exec(`UPDATE Admins SET challenge = ? WHERE id = ?;`, challengeData, user.Id); err != nil {
+		log.Println(err)
+		res.WriteHeader(400)
+		return
+	}
+
+	user.Challenge = challengeData
+	render.JSON(res, req, user)
 }
 
 func handleLogin(res http.ResponseWriter, req *http.Request) {
-	response := struct{ Response []byte }{ }
-	if err := render.DecodeJSON(req.Body, &response); err != nil {
+	var user Admin
+	if err := render.DecodeJSON(req.Body, &user); err != nil {
 		log.Println(err)
 		res.WriteHeader(400)
 		return
@@ -129,7 +164,7 @@ func handleLogin(res http.ResponseWriter, req *http.Request) {
 	}
 
 	sig := &struct{ R, S *big.Int }{}
-	if _, err := asn1.Unmarshal(response.Response, sig); err != nil {
+	if _, err := asn1.Unmarshal(user.Response, sig); err != nil {
 		log.Println(err)
 		res.WriteHeader(400)
 		return
@@ -153,7 +188,11 @@ func handleLogin(res http.ResponseWriter, req *http.Request) {
 }
 
 func handleRegister(res http.ResponseWriter, req *http.Request) {
-	var pubKey ecdsa.PublicKey
+	var (
+		pubKey ecdsa.PublicKey
+		id int64
+		err error
+	)
 
 	if err := render.DecodeJSON(req.Body, &pubKey); err != nil {
 		log.Println(err)
@@ -161,14 +200,20 @@ func handleRegister(res http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	_, err := db.Exec(`INSERT INTO Admins (keyX, keyY) VALUES (?, ?);`, pubKey.X.String(), pubKey.Y.String());
+	result, err := db.Exec(`INSERT INTO Admins (keyX, keyY) VALUES (?, ?);`, pubKey.X.String(), pubKey.Y.String());
 	if err != nil {
 		log.Println(err)
 		res.WriteHeader(500)
 		return
 	}
 
-	res.WriteHeader(200)
+	if id, err = result.LastInsertId(); err != nil {
+		log.Println(err)
+		res.WriteHeader(500)
+		return
+	}
+
+	render.JSON(res, req, map[string]int64{ "id": id })
 }
 
 func addLock(res http.ResponseWriter, req *http.Request) {
@@ -206,7 +251,7 @@ func addUser(res http.ResponseWriter, req *http.Request) {
 
 	render.DecodeJSON(req.Body, &user)
 
-	_, err := db.Exec(`INSERT INTO Users (name, email, pin, cardno) VALUES (?, ?, ?, ?);`, user.Name, user.Email, user.Pin, user.Card)
+	_, err := db.Exec(`INSERT INTO Users (name, email, pin, cardno) VALUES (?, ?, ?, ?);`, user.Name, user.Email, user.Pin, user.CardNo)
 
 	if err != nil {
 		log.Println(err)
@@ -301,7 +346,7 @@ func listUsers(res http.ResponseWriter, req *http.Request) {
 			//variable to save the user
 			var user User
 
-			if err := rows.Scan(&user.Id, &user.Name, &user.Email, &user.Pin, &user.Card); err != nil {
+			if err := rows.Scan(&user.Id, &user.Name, &user.Email, &user.Pin, &user.CardNo); err != nil {
 				log.Println(err)
 				return
 			}

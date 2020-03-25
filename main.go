@@ -37,21 +37,33 @@ func main() {
 	dbPass := os.Getenv("BAST_DB_PASS")
 	dbDB := os.Getenv("BAST_DB_DB")
 
-	if db, err = sql.Open("mysql", fmt.Sprintf("%s:%s@/%s", dbUser, dbPass, dbDB); err != nil {
+	if db, err = sql.Open("mysql", fmt.Sprintf("%s:%s@/%s", dbUser, dbPass, dbDB)); err != nil {
 		log.Fatal(err)
 	}
 
 	log.Println("Starting REST server.")
-	if ssl {
-		httpServer := server()
-		go httpServer.ListenAndServeTLS(certFile,keyFile)
-	} else {
-		go http.ListenAndServe(addr, router())
-	}
+	errChan := make(chan error)
+
+	go func() {
+		if ssl {
+			httpServer := server()
+			errChan <- httpServer.ListenAndServeTLS(certFile,keyFile)
+		} else {
+			errChan <- http.ListenAndServe(addr, router())
+		}
+	}()
 
 	sig := make(chan os.Signal)
 	signal.Notify(sig, os.Interrupt)
-	<-sig
+
+	select {
+	case err = <-errChan:
+		log.Println("HTTP Server Closed with error: ", err)
+		log.Println(certFile)
+		log.Println(keyFile)
+	case s := <-sig:
+		log.Println("Received Signal: ", s)
+	}
 
 	db.Close()
 }

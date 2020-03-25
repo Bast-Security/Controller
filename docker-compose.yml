@@ -14,11 +14,13 @@ services:
 
     bast:
         build: .
+        environment:
+            BAST_DB_USER: bast
+            BAST_DB_PASS: bast
+            BAST_DB_DB: bast
+            BAST_CERT: pki/bast.crt
+            BAST_KEY: pki/bast.key
         ports:
             - 8080:8080
-        environment:
-            - BAST_DB_USER: bast
-            - BAST_DB_PASS: bast
-            - BAST_DB_DB: bast
         depends_on: database
 
