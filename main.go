@@ -4,11 +4,11 @@ import (
 	_ "github.com/go-sql-driver/mysql"
 
 	"database/sql"
+	"fmt"
 	"os"
 	"os/signal"
 	"net/http"
 	"log"
-	"flag"
 )
 
 var (
@@ -21,19 +21,23 @@ func main() {
 		certFile string
 		keyFile string
 		ssl bool = true
+		valid bool
 		err error
 	)
 
-	flag.StringVar(&addr, "addr", ":8080", "Address to bind to, formatted as 'address:port'")
-	flag.StringVar(&certFile, "cert-file", "", "Server certificate if using SSL")
-	flag.StringVar(&keyFile, "key-file", "", "Server private key if using SSL")
-	flag.Parse()
-
-	if certFile == "" || keyFile == "" {
-		ssl = false
+	if certFile, valid = os.LookupEnv("BAST_CERT"); valid {
+		keyFile, ssl = os.LookupEnv("BAST_KEY")
 	}
 
-	if db, err = sql.Open("mysql", "bast:bast@/bast"); err != nil {
+	if addr, valid = os.LookupEnv("BAST_ADDR"); !valid {
+		addr = ":8080"
+	}
+
+	dbUser := os.Getenv("BAST_DB_USER")
+	dbPass := os.Getenv("BAST_DB_PASS")
+	dbDB := os.Getenv("BAST_DB_DB")
+
+	if db, err = sql.Open("mysql", fmt.Sprintf("%s:%s@/%s", dbUser, dbPass, dbDB); err != nil {
 		log.Fatal(err)
 	}
 
