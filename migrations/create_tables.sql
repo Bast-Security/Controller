@@ -1,7 +1,6 @@
 CREATE TABLE IF NOT EXISTS Systems (
     id INTEGER NOT NULL AUTO_INCREMENT,
     name VARCHAR(32) NOT NULL,
-    identityKey BLOB NOT NULL,
     PRIMARY KEY (id)
 );
 

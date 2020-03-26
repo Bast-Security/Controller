@@ -14,7 +14,9 @@ import (
 	"crypto/rand"
 	"crypto/sha256"
 	"encoding/asn1"
+	"database/sql"
 	"net/http"
+	"fmt"
 	"log"
 )
 
@@ -24,31 +26,40 @@ var (
 )
 
 type Door struct {
-	Name string
-	Method int
+	System int64  `json:"system,omitempty"`
+	Name   string `json:"name,omitempty"`
+	Method int    `json:"method,omitemtpy"`
 }
 
 type Role struct {
-	Name string
+	System int64  `json:"system,omitempty"`
+	Name   string `json:"name,omitempty"`
 }
 
 type User struct {
-	Id int64
-	Name string
-	Email string
-	Pin string
-	CardNo string
+	System int64  `json:"system,omitempty"`
+	Id     int64  `json:"id,omitempty"`
+	Name   string `json:"name,omitempty"`
+	Email  string `json:"email,omitempty"`
+	Pin    string `json:"pin,omitempty"`
+	CardNo string `json:"cardno,omitempty"`
+}
+
+type System struct {
+	Id int64    `json:"id,omitempty"`
+	Name string `json:"name,omitempty"`
+	IdentityKey []byte `json:"identityKey,omitempty"`
 }
 
 type Admin struct {
-	Id int64
-	KeyX *big.Int
-	KeyY *big.Int
-	Challenge []byte
-	Response []byte
-	Name string
-	Email string
-	Phone string
+	Id int64          `json:"id,omitempty"`
+	KeyX *big.Int     `json:"keyX,omitempty"`
+	KeyY *big.Int     `json:"keyY,omitempty"`
+	Challenge []byte  `json:"challenge,omitempty"`
+	Response  []byte  `json:"response,omitempty"`
+	Name  string      `json:"name,omitempty"`
+	Email string      `json:"email,omitempty"`
+	Phone string      `json:"phone,omitempty"`
 }
 
 func init() {
@@ -93,6 +104,7 @@ func router() http.Handler {
 		router.Post("/addUser", addUser)
 		router.Post("/addRole", addRole)
 		router.Post("/addLock", addLock)
+		router.Get("/listSystems", listSystems)
 		router.Get("/listUsers", listUsers)
 		router.Get("/listRoles", listRoles)
 		router.Get("/listLocks", listLocks)
@@ -101,8 +113,54 @@ func router() http.Handler {
 	return router
 }
 
+func getId(req *http.Request) (id int64, err error) {
+	var claims jwt.MapClaims
+	if _, claims, err = jwtauth.FromContext(req.Context()); err == nil {
+		var (
+			i interface{}
+			ok bool
+		)
+
+		if i, ok = claims["id"]; !ok {
+			err = fmt.Errorf("No id in claims")
+		} else {
+			id = int64(i.(float64))
+		}
+	}
+	return
+}
+
 func addSystem(res http.ResponseWriter, req *http.Request) {
-	res.WriteHeader(500)
+	var (
+		uid int64
+		system System
+		result sql.Result
+		err error
+	)
+
+	if uid, err = getId(req); err != nil {
+		log.Println(err)
+		res.WriteHeader(400)
+		return
+	}
+
+	if err := render.DecodeJSON(req.Body, &system); err != nil && system.Name != "" {
+		log.Println(err)
+		res.WriteHeader(400)
+		return
+	}
+
+	if result, err = db.Exec(`INSERT INTO Systems (name) VALUES (?);`, system.Name); err == nil {
+		if system.Id, err = result.LastInsertId(); err == nil {
+			_, err = db.Exec(`INSERT INTO AdminSystem (admin, system) VALUES (?, ?);`, uid, system.Id)
+		}
+	}
+	if err != nil {
+		log.Println(err)
+		res.WriteHeader(500)
+	}
+
+	res.WriteHeader(200)
 }
 
 func getChallenge(res http.ResponseWriter, req *http.Request) {
@@ -145,7 +203,7 @@ func handleLogin(res http.ResponseWriter, req *http.Request) {
 		y []byte
 	)
 
-	row := db.QueryRow(`SELECT challenge, keyX, keyY FROM Admins WHERE id = 1;`)
+	row := db.QueryRow(`SELECT challenge, keyX, keyY FROM Admins WHERE id = ?;`, user.Id)
 
 	if err := row.Scan(&challenge, &x, &y); err != nil {
 		log.Println(err)
@@ -175,7 +233,7 @@ func handleLogin(res http.ResponseWriter, req *http.Request) {
 	hashed := sha.Sum(nil)
 
 	if ecdsa.Verify(&pubKey, hashed, sig.R, sig.S) {
-		if _, token, err := tokenAuth.Encode(jwt.MapClaims{ "uid": 1 }); err != nil {
+		if _, token, err := tokenAuth.Encode(jwt.MapClaims{ "id": user.Id }); err != nil {
 			log.Println(err)
 			res.WriteHeader(500)
 		} else {
@@ -333,17 +391,14 @@ func listRoles(res http.ResponseWriter, req *http.Request) {
 func listUsers(res http.ResponseWriter, req *http.Request) {
 	var users []User
 
-	//variable will save the querry command
 	rows, err := db.Query(`select Users.id, Users.name, Users.email, Users.pin, Users.cardno from Users`)
 	defer rows.Close()
 
-	//if statement makes to sure that query was a success; if successful then each row in the Users scheme is read
 	if err != nil {
 		log.Println(err)
 	} else {
 		defer rows.Close()
 		for rows.Next() {
-			//variable to save the user
 			var user User
 
 			if err := rows.Scan(&user.Id, &user.Name, &user.Email, &user.Pin, &user.CardNo); err != nil {
@@ -351,7 +406,6 @@ func listUsers(res http.ResponseWriter, req *http.Request) {
 				return
 			}
 
-			//a new user is added to the array
 			users = append(users, user)
 		}
 		if err := rows.Err(); err != nil {
@@ -361,5 +415,41 @@ func listUsers(res http.ResponseWriter, req *http.Request) {
 
 	//converts array into a JSON and sends it to requestor
 	render.JSON(res, req, users)
+}
+
+func listSystems(res http.ResponseWriter, req *http.Request) {
+	var (
+		systems []System
+		id int64
+		rows *sql.Rows
+		err error
+	)
+
+	if id, err = getId(req); err != nil {
+		log.Println(err)
+		res.WriteHeader(400)
+		return
+	}
+
+	if rows, err = db.Query(`SELECT id, name FROM Systems
+		INNER JOIN AdminSystem ON Systems.id = AdminSystem.system
+		WHERE AdminSystem.admin = ?;`, id); err != nil {
+		log.Println(err)
+		res.WriteHeader(500)
+		return
+	}
+
+	defer rows.Close()
+
+	for rows.Next() {
+		var system System
+		rows.Scan(&system.Id, &system.Name)
+		systems = append(systems, system)
+	}
+	if err = rows.Err(); err != nil {
+		log.Println(err)
+	}
+
+	render.JSON(res, req, systems)
 }
 
