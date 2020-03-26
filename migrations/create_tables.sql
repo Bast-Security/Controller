@@ -1,34 +1,52 @@
+CREATE TABLE IF NOT EXISTS Systems (
+    id INTEGER NOT NULL AUTO_INCREMENT,
+    name VARCHAR(32) NOT NULL,
+    identityKey BLOB NOT NULL,
+    PRIMARY KEY (id)
+);
+
+
 CREATE TABLE IF NOT EXISTS Doors (
     name VARCHAR(32) NOT NULL,
-    PRIMARY KEY (name)
+    system INTEGER NOT NULL,
+    PRIMARY KEY (name, system),
+    FOREIGN KEY (system) REFERENCES Systems (id)
 );
 
 CREATE TABLE IF NOT EXISTS Users (
     id INTEGER NOT NULL AUTO_INCREMENT,
+    system INTEGER NOT NULL,
     name VARCHAR(32) NOT NULL,
     email VARCHAR(32) NOT NULL,
     pin VARCHAR(32),
     cardno INTEGER,
-    PRIMARY KEY(id)
+    PRIMARY KEY(id, system),
+    FOREIGN KEY (system) REFERENCES Systems (id)
 );
 
 CREATE TABLE IF NOT EXISTS Roles (
     name VARCHAR(32) NOT NULL,
-    PRIMARY KEY (name)
+    system INTEGER NOT NULL,
+    PRIMARY KEY (name, system),
+    FOREIGN KEY (system) REFERENCES Systems (id)
 );
 
 CREATE TABLE IF NOT EXISTS UserRole (
+    system INTEGER NOT NULL,
     userid INTEGER NOT NULL,
     role VARCHAR(32) NOT NULL,
-    PRIMARY KEY (userid, role),
+    PRIMARY KEY (system, userid, role),
     FOREIGN KEY (userid) REFERENCES Users(id),
-    FOREIGN KEY (role) REFERENCES Roles(name)
+    FOREIGN KEY (role) REFERENCES Roles(name),
+    FOREIGN KEY (system) REFERENCES Systems (id)
 );
 
 CREATE TABLE IF NOT EXISTS Permissions (
+    system INTEGER NOT NULL,
     role VARCHAR(32) NOT NULL,
     door VARCHAR(32) NOT NULL,
-    PRIMARY KEY (role, door),
+    PRIMARY KEY (role, door, system),
+    FOREIGN KEY (system) REFERENCES Systems (id),
     FOREIGN KEY (role) REFERENCES Roles (name),
     FOREIGN KEY (door) REFERENCES Doors (name)
 );
@@ -41,13 +59,6 @@ CREATE TABLE IF NOT EXISTS Admins (
     name VARCHAR(32),
     email VARCHAR(32),
     phone VARCHAR(32),
-    PRIMARY KEY (id)
-);
-
-CREATE TABLE IF NOT EXISTS Systems (
-    id INTEGER NOT NULL AUTO_INCREMENT,
-    name VARCHAR(32) NOT NULL,
-    identityKey BLOB NOT NULL,
     PRIMARY KEY (id)
 );
 
