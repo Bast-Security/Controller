@@ -43,8 +43,7 @@ type User struct {
 	Email  string `json:"email,omitempty"`
 	Pin    string `json:"pin,omitempty"`
 	CardNo string `json:"cardno,omitempty"`
-}
-
+} 
 type System struct {
 	Id int64    `json:"id,omitempty"`
 	Name string `json:"name,omitempty"`
@@ -92,22 +91,66 @@ func router() http.Handler {
 
 	router.Use(middleware.Logger)
 
+	unimp := func(res http.ResponseWriter, req *http.Request) {
+		res.WriteHeader(500)
+		fmt.Fprintln(res, "This route has not been implemented yet")
+	}
+
 	router.Post("/register", handleRegister)
 	router.Post("/challenge", getChallenge)
 	router.Post("/login", handleLogin)
 
+	// Must be logged in as admin to access these routes
 	router.Group(func(router chi.Router) {
 		router.Use(jwtauth.Verifier(tokenAuth))
 		router.Use(jwtauth.Authenticator)
 
-		router.Post("/addSystem", addSystem)
-		router.Post("/addUser", addUser)
-		router.Post("/addRole", addRole)
-		router.Post("/addLock", addLock)
-		router.Get("/listSystems", listSystems)
-		router.Get("/listUsers", listUsers)
-		router.Get("/listRoles", listRoles)
-		router.Get("/listLocks", listLocks)
+		router.Route("/systems", func(router chi.Router) {
+			router.Post("/", addSystem)
+			router.Get("/", listSystems)
+
+			router.Route("/{systemId}", func(router chi.Router) {
+				router.Route("/users", func(router chi.Router) {
+					router.Post("/", addUser)
+					router.Get("/", listUsers)
+
+					router.Route("/{userId}", func(router chi.Router) {
+						router.Put("/", unimp)
+						router.Delete("/", unimp)
+						router.Get("/log", unimp)
+					})
+				})
+
+				router.Route("/roles", func(router chi.Router) {
+					router.Post("/", addRole)
+					router.Get("/", listRoles)
+
+					router.Route("/{role}", func(router chi.Router) {
+						router.Put("/", unimp)
+						router.Delete("/", unimp)
+						router.Get("/log", unimp)
+					})
+				})
+
+				router.Get("/log", unimp)
+			})
+		})
+	})
+
+	router.Route("/locks", func(router chi.Router) {
+		router.Post("/register", unimp)
+		router.Post("/challenge", unimp)
+		router.Post("/login", unimp)
+
+		// Must be logged in as a lock to access these routes
+		router.Group(func(router chi.Router) {
+			router.Use(jwtauth.Verifier(tokenAuth))
+			router.Use(jwtauth.Authenticator)
+
+			router.Post("/", addLock)
+			router.Get("/", listLocks)
+			router.Get("/log", unimp)
+		})
 	})
 
 	return router
@@ -128,6 +171,19 @@ func getId(req *http.Request) (id int64, err error) {
 		}
 	}
 	return
+}
+
+func hasAccess(adminId, systemId int64) bool {
+	var id int64
+	row := db.QueryRow(`SELECT adminId FROM AdminSystem WHERE admin=? AND system=?;`, adminId, systemId)
+	if err := row.Scan(&id); err != nil {
+		log.Println("Admin doesn't have access to the system. ", err)
+		return false
+	}
+	if id == adminId {
+		return true
+	}
+	return false
 }
 
 func addSystem(res http.ResponseWriter, req *http.Request) {
@@ -290,17 +346,31 @@ func addLock(res http.ResponseWriter, req *http.Request) {
 }
 
 func addRole(res http.ResponseWriter, req *http.Request) {
-	var role string
+	var (
+		role Role
+		id int64
+		err error
+	)
 
 	render.DecodeJSON(req.Body, &role)
 
-	_, err := db.Exec(`INSERT INTO Roles (name) VALUES (?);`, role)
-
-	if err != nil{
+	if id, err = getId(req); err != nil {
 		log.Println(err)
-		res.WriteHeader(400)
-	}else{
-		res.WriteHeader(200)
+		res.WriteHeader(401)
+		return
+	}
+
+	if hasAccess(id, role.System) {
+		_, err := db.Exec(`INSERT INTO Roles (name, system) VALUES (?, ?);`, role.Name, role.System)
+
+		if err != nil{
+			log.Println(err)
+			res.WriteHeader(400)
+		}else{
+			res.WriteHeader(200)
+		}
+	} else {
+		res.WriteHeader(401)
 	}
 }
 
