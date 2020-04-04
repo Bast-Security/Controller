@@ -7,6 +7,8 @@ import (
 	"github.com/go-chi/jwtauth"
 	jwt "github.com/dgrijalva/jwt-go"
 
+	"strconv"
+	"context"
 	"math/big"
 	"crypto/tls"
 	"crypto/elliptic"
@@ -43,7 +45,8 @@ type User struct {
 	Email  string `json:"email,omitempty"`
 	Pin    string `json:"pin,omitempty"`
 	CardNo string `json:"cardno,omitempty"`
-} 
+}
+
 type System struct {
 	Id int64    `json:"id,omitempty"`
 	Name string `json:"name,omitempty"`
@@ -110,11 +113,15 @@ func router() http.Handler {
 			router.Get("/", listSystems)
 
 			router.Route("/{systemId}", func(router chi.Router) {
+				router.Use(systemContext)
+
 				router.Route("/users", func(router chi.Router) {
 					router.Post("/", addUser)
 					router.Get("/", listUsers)
 
 					router.Route("/{userId}", func(router chi.Router) {
+						router.Use(userContext)
+
 						router.Put("/", unimp)
 						router.Delete("/", unimp)
 						router.Get("/log", unimp)
@@ -126,6 +133,8 @@ func router() http.Handler {
 					router.Get("/", listRoles)
 
 					router.Route("/{role}", func(router chi.Router) {
+						router.Use(roleContext)
+
 						router.Put("/", unimp)
 						router.Delete("/", unimp)
 						router.Get("/log", unimp)
@@ -154,6 +163,47 @@ func router() http.Handler {
 	})
 
 	return router
+}
+
+func systemContext(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(res http.ResponseWriter, req *http.Request) {
+		var (
+			userId int64
+			systemId int
+			err error
+		)
+
+		if userId, err = getId(req); err == nil {
+			if systemId, err = strconv.Atoi(chi.URLParam(req, "systemId")); err == nil {
+				if rows, err := db.Query(`SELECT * FROM AdminSystem WHERE admin = ? AND system = ?;`, userId, systemId); err == nil {
+					defer rows.Close()
+					if !rows.Next() {
+						err = fmt.Errorf("No association between user %d and system %d.\n", userId, systemId)
+					}
+				}
+			}
+		}
+
+		if err != nil {
+			log.Println(err)
+			res.WriteHeader(400)
+		} else {
+			ctx := context.WithValue(context.WithValue(req.Context(), "adminId", userId), "systemId", systemId)
+			next.ServeHTTP(res, req.WithContext(ctx))
+		}
+	})
+}
+
+func userContext(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(res http.ResponseWriter, req *http.Request) {
+		next.ServeHTTP(res, req)
+	})
+}
+
+func roleContext(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(res http.ResponseWriter, req *http.Request) {
+		next.ServeHTTP(res, req)
+	})
 }
 
 func getId(req *http.Request) (id int64, err error) {
