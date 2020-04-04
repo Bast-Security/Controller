@@ -120,8 +120,6 @@ func router() http.Handler {
 					router.Get("/", listUsers)
 
 					router.Route("/{userId}", func(router chi.Router) {
-						router.Use(userContext)
-
 						router.Put("/", unimp)
 						router.Delete("/", unimp)
 						router.Get("/log", unimp)
@@ -133,8 +131,6 @@ func router() http.Handler {
 					router.Get("/", listRoles)
 
 					router.Route("/{role}", func(router chi.Router) {
-						router.Use(roleContext)
-
 						router.Put("/", unimp)
 						router.Delete("/", unimp)
 						router.Get("/log", unimp)
@@ -170,12 +166,13 @@ func systemContext(next http.Handler) http.Handler {
 		var (
 			userId int64
 			systemId int
+			rows *sql.Rows
 			err error
 		)
 
 		if userId, err = getId(req); err == nil {
 			if systemId, err = strconv.Atoi(chi.URLParam(req, "systemId")); err == nil {
-				if rows, err := db.Query(`SELECT * FROM AdminSystem WHERE admin = ? AND system = ?;`, userId, systemId); err == nil {
+				if rows, err = db.Query(`SELECT 1 FROM AdminSystem WHERE admin = ? AND system = ?;`, userId, systemId); err == nil {
 					defer rows.Close()
 					if !rows.Next() {
 						err = fmt.Errorf("No association between user %d and system %d.\n", userId, systemId)
@@ -191,18 +188,6 @@ func systemContext(next http.Handler) http.Handler {
 			ctx := context.WithValue(context.WithValue(req.Context(), "adminId", userId), "systemId", systemId)
 			next.ServeHTTP(res, req.WithContext(ctx))
 		}
-	})
-}
-
-func userContext(next http.Handler) http.Handler {
-	return http.HandlerFunc(func(res http.ResponseWriter, req *http.Request) {
-		next.ServeHTTP(res, req)
-	})
-}
-
-func roleContext(next http.Handler) http.Handler {
-	return http.HandlerFunc(func(res http.ResponseWriter, req *http.Request) {
-		next.ServeHTTP(res, req)
 	})
 }
 
