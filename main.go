@@ -7,7 +7,6 @@ import (
 	"fmt"
 	"os"
 	"os/signal"
-	"net/http"
 	"log"
 )
 
@@ -20,22 +19,37 @@ func main() {
 	var (
 		certFile string
 		keyFile string
-		ssl bool = true
 		valid bool
 		err error
+
+		dbUser string
+		dbPass string
+		dbDB   string
 	)
 
-	if certFile, valid = os.LookupEnv("BAST_CERT"); valid {
-		keyFile, ssl = os.LookupEnv("BAST_KEY")
+	if certFile, valid = os.LookupEnv("BAST_CERT"); !valid {
+		certFile = "pki/bast.crt"
+	}
+
+	if keyFile, valid = os.LookupEnv("BAST_KEY"); !valid {
+		keyFile = "pki/bast.key"
 	}
 
 	if addr, valid = os.LookupEnv("BAST_ADDR"); !valid {
 		addr = ":8080"
 	}
 
-	dbUser := os.Getenv("BAST_DB_USER")
-	dbPass := os.Getenv("BAST_DB_PASS")
-	dbDB := os.Getenv("BAST_DB_DB")
+	if dbUser, valid = os.LookupEnv("BAST_DB_USER"); !valid {
+		dbUser = "bast"
+	}
+
+	if dbPass, valid = os.LookupEnv("BAST_DB_PASS"); !valid {
+		dbPass = "bast"
+	}
+
+	if dbDB, valid = os.LookupEnv("BAST_DB_DB"); !valid {
+		dbDB = "bast"
+	}
 
 	if db, err = sql.Open("mysql", fmt.Sprintf("%s:%s@/%s", dbUser, dbPass, dbDB)); err != nil {
 		log.Fatal(err)
@@ -45,12 +59,8 @@ func main() {
 	errChan := make(chan error)
 
 	go func() {
-		if ssl {
-			httpServer := server()
-			errChan <- httpServer.ListenAndServeTLS(certFile,keyFile)
-		} else {
-			errChan <- http.ListenAndServe(addr, router())
-		}
+		httpServer := server()
+		errChan <- httpServer.ListenAndServeTLS(certFile,keyFile)
 	}()
 
 	sig := make(chan os.Signal)
