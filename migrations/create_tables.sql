@@ -4,11 +4,11 @@ CREATE TABLE IF NOT EXISTS Systems (
     PRIMARY KEY (id)
 );
 
-
 CREATE TABLE IF NOT EXISTS Doors (
+    id INTEGER NOT NULL AUTO_INCREMENT,
     name VARCHAR(32) NOT NULL,
     system INTEGER NOT NULL,
-    PRIMARY KEY (name, system),
+    PRIMARY KEY (id),
     FOREIGN KEY (system) REFERENCES Systems (id)
 );
 
@@ -43,11 +43,11 @@ CREATE TABLE IF NOT EXISTS UserRole (
 CREATE TABLE IF NOT EXISTS Permissions (
     system INTEGER NOT NULL,
     role VARCHAR(32) NOT NULL,
-    door VARCHAR(32) NOT NULL,
+    door INTEGER NOT NULL,
     PRIMARY KEY (role, door, system),
     FOREIGN KEY (system) REFERENCES Systems (id),
     FOREIGN KEY (role) REFERENCES Roles (name),
-    FOREIGN KEY (door) REFERENCES Doors (name)
+    FOREIGN KEY (door) REFERENCES Doors (id)
 );
 
 CREATE TABLE IF NOT EXISTS Admins (

@@ -28,6 +28,7 @@ var (
 )
 
 type Door struct {
+	Id     int64  `json:"id,omitempty"`
 	System int64  `json:"system,omitempty"`
 	Name   string `json:"name,omitempty"`
 	Method int    `json:"method,omitemtpy"`
@@ -126,6 +127,10 @@ func router() http.Handler {
 					})
 				})
 
+				router.Route("/locks", func(router chi.Router) {
+					router.Get("/", listLocks)
+				})
+
 				router.Route("/roles", func(router chi.Router) {
 					router.Post("/", addRole)
 					router.Get("/", listRoles)
@@ -143,19 +148,9 @@ func router() http.Handler {
 	})
 
 	router.Route("/locks", func(router chi.Router) {
-		router.Post("/register", unimp)
+		router.Post("/register", addLock)
 		router.Post("/challenge", unimp)
 		router.Post("/login", unimp)
-
-		// Must be logged in as a lock to access these routes
-		router.Group(func(router chi.Router) {
-			router.Use(jwtauth.Verifier(tokenAuth))
-			router.Use(jwtauth.Authenticator)
-
-			router.Post("/", addLock)
-			router.Get("/", listLocks)
-			router.Get("/log", unimp)
-		})
 	})
 
 	return router
@@ -165,18 +160,14 @@ func systemContext(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(res http.ResponseWriter, req *http.Request) {
 		var (
 			userId int64
-			systemId int
-			rows *sql.Rows
+			systemId int64
 			err error
 		)
 
 		if userId, err = getId(req); err == nil {
-			if systemId, err = strconv.Atoi(chi.URLParam(req, "systemId")); err == nil {
-				if rows, err = db.Query(`SELECT 1 FROM AdminSystem WHERE admin = ? AND system = ?;`, userId, systemId); err == nil {
-					defer rows.Close()
-					if !rows.Next() {
-						err = fmt.Errorf("No association between user %d and system %d.\n", userId, systemId)
-					}
+			if systemId, err = strconv.ParseInt(chi.URLParam(req, "systemId"), 10, 64); err == nil {
+				if !hasAccess(userId, systemId) {
+					err = fmt.Errorf("No association between user %d and system %d.\n", userId, systemId)
 				}
 			}
 		}
@@ -210,7 +201,7 @@ func getId(req *http.Request) (id int64, err error) {
 
 func hasAccess(adminId, systemId int64) bool {
 	var id int64
-	row := db.QueryRow(`SELECT adminId FROM AdminSystem WHERE admin=? AND system=?;`, adminId, systemId)
+	row := db.QueryRow(`SELECT admin FROM AdminSystem WHERE admin=? AND system=?;`, adminId, systemId)
 	if err := row.Scan(&id); err != nil {
 		log.Println("Admin doesn't have access to the system. ", err)
 		return false
@@ -366,46 +357,42 @@ func handleRegister(res http.ResponseWriter, req *http.Request) {
 }
 
 func addLock(res http.ResponseWriter, req *http.Request) {
-	var door string
+	var door Door
 
 	render.DecodeJSON(req.Body, &door)
 
-	_, err := db.Exec(`INSERT INTO Door (name) VALUES (?);`, door)
+	result, err := db.Exec(`INSERT INTO Door (name, system) VALUES (?, ?);`, door.Name, door.System)
 
-	if err != nil{
+	if err != nil {
 		log.Println(err)
 		res.WriteHeader(400)
-	}else{
-		res.WriteHeader(200)
+	}
+
+	if id, err := result.LastInsertId(); err != nil {
+		log.Println(err)
+		res.WriteHeader(500)
+	} else {
+		render.JSON(res, req, map[string]int64{ "id": id })
 	}
 }
 
 func addRole(res http.ResponseWriter, req *http.Request) {
 	var (
 		role Role
-		id int64
 		err error
 	)
 
 	render.DecodeJSON(req.Body, &role)
 
-	if id, err = getId(req); err != nil {
+	role.System = req.Context().Value("systemId").(int64)
+
+	_, err = db.Exec(`INSERT INTO Roles (name, system) VALUES (?, ?);`, role.Name, role.System)
+
+	if err != nil{
 		log.Println(err)
-		res.WriteHeader(401)
-		return
-	}
-
-	if hasAccess(id, role.System) {
-		_, err := db.Exec(`INSERT INTO Roles (name, system) VALUES (?, ?);`, role.Name, role.System)
-
-		if err != nil{
-			log.Println(err)
-			res.WriteHeader(400)
-		}else{
-			res.WriteHeader(200)
-		}
+		res.WriteHeader(400)
 	} else {
-		res.WriteHeader(401)
+		res.WriteHeader(200)
 	}
 }
 
