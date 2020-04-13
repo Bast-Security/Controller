@@ -8,6 +8,9 @@ CREATE TABLE IF NOT EXISTS Doors (
     id INTEGER NOT NULL AUTO_INCREMENT,
     name VARCHAR(32) NOT NULL,
     system INTEGER NOT NULL,
+    keyX BLOB NOT NULL,
+    keyY BLOB NOT NULL,
+    challenge BINARY(16),
     PRIMARY KEY (id),
     FOREIGN KEY (system) REFERENCES Systems (id)
 );

@@ -30,6 +30,10 @@ var (
 type Door struct {
 	Id     int64  `json:"id,omitempty"`
 	System int64  `json:"system,omitempty"`
+	KeyX *big.Int     `json:"keyX,omitempty"`
+	KeyY *big.Int     `json:"keyY,omitempty"`
+	Challenge []byte  `json:"challenge,omitempty"`
+	Response  []byte  `json:"response,omitempty"`
 	Name   string `json:"name,omitempty"`
 	Method int    `json:"method,omitemtpy"`
 }
@@ -361,18 +365,23 @@ func addLock(res http.ResponseWriter, req *http.Request) {
 
 	render.DecodeJSON(req.Body, &door)
 
-	result, err := db.Exec(`INSERT INTO Door (name, system) VALUES (?, ?);`, door.Name, door.System)
+	result, err := db.Exec(`INSERT INTO Doors (name, system, keyX, keyY) VALUES (?, ?, ?, ?);`, door.Name, door.System, door.KeyX.String(), door.KeyY.String())
 
 	if err != nil {
 		log.Println(err)
 		res.WriteHeader(400)
 	}
 
-	if id, err := result.LastInsertId(); err != nil {
-		log.Println(err)
-		res.WriteHeader(500)
+	if result != nil {
+		if id, err := result.LastInsertId(); err != nil {
+			log.Println(err)
+			res.WriteHeader(500)
+		} else {
+			render.JSON(res, req, map[string]int64{ "id": id })
+		}
 	} else {
-		render.JSON(res, req, map[string]int64{ "id": id })
+		log.Println("Result is null!")
+		res.WriteHeader(500)
 	}
 }
 
