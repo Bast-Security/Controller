@@ -153,8 +153,8 @@ func router() http.Handler {
 
 	router.Route("/locks", func(router chi.Router) {
 		router.Post("/register", addLock)
-		router.Post("/challenge", unimp)
-		router.Post("/login", unimp)
+		router.Post("/challenge", lockChallenge)
+		router.Post("/login", lockLogin)
 	})
 
 	return router
@@ -382,6 +382,89 @@ func addLock(res http.ResponseWriter, req *http.Request) {
 	} else {
 		log.Println("Result is null!")
 		res.WriteHeader(500)
+	}
+}
+
+
+func lockChallenge(res http.ResponseWriter, req *http.Request) {
+	challengeData := make([]byte, 16)
+	if _, err := rand.Read(challengeData); err != nil {
+		log.Println(err)
+		res.WriteHeader(500)
+		return
+	}
+
+	var door Door
+	if err := render.DecodeJSON(req.Body, &door); err != nil {
+		log.Println(err)
+		res.WriteHeader(400)
+		return
+	}
+
+	if _, err := db.Exec(`UPDATE Doors SET challenge = ? WHERE id = ?;`, challengeData, door.Id); err != nil {
+		log.Println(err)
+		res.WriteHeader(400)
+		return
+	}
+
+	door.Challenge = challengeData
+	render.JSON(res, req, door)
+}
+
+func lockLogin(res http.ResponseWriter, req *http.Request) {
+	var door Door
+	if err := render.DecodeJSON(req.Body, &door); err != nil {
+		log.Println(err)
+		res.WriteHeader(400)
+		return
+	}
+
+	var (
+		challenge []byte
+		pubKey ecdsa.PublicKey = ecdsa.PublicKey{ Curve: elliptic.P384(), X: new(big.Int), Y: new(big.Int) }
+		x []byte
+		y []byte
+	)
+
+	row := db.QueryRow(`SELECT challenge, keyX, keyY FROM Doors WHERE id = ?;`, door.Id)
+
+	if err := row.Scan(&challenge, &x, &y); err != nil {
+		log.Println(err)
+		res.WriteHeader(400)
+		return
+	}
+	if err := pubKey.X.UnmarshalText(x); err != nil {
+		log.Println(err)
+		res.WriteHeader(400)
+		return
+	}
+	if err := pubKey.Y.UnmarshalText(y); err != nil {
+		log.Println(err)
+		res.WriteHeader(400)
+		return
+	}
+
+	sig := &struct{ R, S *big.Int }{}
+	if _, err := asn1.Unmarshal(door.Response, sig); err != nil {
+		log.Println(err)
+		res.WriteHeader(400)
+		return
+	}
+
+	sha := sha256.New()
+	sha.Write(challenge)
+	hashed := sha.Sum(nil)
+
+	if ecdsa.Verify(&pubKey, hashed, sig.R, sig.S) {
+		if _, token, err := tokenAuth.Encode(jwt.MapClaims{ "doorid": door.Id }); err != nil {
+			log.Println(err)
+			res.WriteHeader(500)
+		} else {
+			res.Write([]byte(token))
+		}
+	} else {
+		log.Println("Verify failed")
+		res.WriteHeader(400)
 	}
 }
 
