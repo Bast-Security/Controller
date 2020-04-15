@@ -7,8 +7,6 @@ import (
 	"github.com/go-chi/jwtauth"
 	jwt "github.com/dgrijalva/jwt-go"
 
-	"github.com/bast-security/controller/bast"
-
 	"strconv"
 	"context"
 	"math/big"
@@ -180,7 +178,7 @@ func hasAccess(adminId, systemId int64) bool {
 func addSystem(res http.ResponseWriter, req *http.Request) {
 	var (
 		uid int64
-		system bast.System
+		system System
 		result sql.Result
 		err error
 	)
@@ -197,7 +195,14 @@ func addSystem(res http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	if result, err = db.Exec(`INSERT INTO Systems (name) VALUES (?);`, system.Name); err == nil {
+	system.TotpKey = make([]byte, 32)
+	if _, err := rand.Read(system.TotpKey); err != nil {
+		log.Println("Failed to create TotpKey ", err)
+		res.WriteHeader(500)
+		return
+	}
+
+	if result, err = db.Exec(`INSERT INTO Systems (name, totpKey) VALUES (?, ?);`, system.Name, system.TotpKey); err == nil {
 		if system.Id, err = result.LastInsertId(); err == nil {
 			_, err = db.Exec(`INSERT INTO AdminSystem (admin, system) VALUES (?, ?);`, uid, system.Id)
 		}
@@ -218,7 +223,7 @@ func getChallenge(res http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	var user bast.Admin
+	var user Admin
 	if err := render.DecodeJSON(req.Body, &user); err != nil {
 		log.Println(err)
 		res.WriteHeader(400)
@@ -236,7 +241,7 @@ func getChallenge(res http.ResponseWriter, req *http.Request) {
 }
 
 func handleLogin(res http.ResponseWriter, req *http.Request) {
-	var user bast.Admin
+	var user Admin
 	if err := render.DecodeJSON(req.Body, &user); err != nil {
 		log.Println(err)
 		res.WriteHeader(400)
@@ -322,7 +327,7 @@ func handleRegister(res http.ResponseWriter, req *http.Request) {
 }
 
 func addLock(res http.ResponseWriter, req *http.Request) {
-	var door bast.Door
+	var door Door
 
 	render.DecodeJSON(req.Body, &door)
 
@@ -355,7 +360,7 @@ func lockChallenge(res http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	var door bast.Door
+	var door Door
 	if err := render.DecodeJSON(req.Body, &door); err != nil {
 		log.Println(err)
 		res.WriteHeader(400)
@@ -373,7 +378,7 @@ func lockChallenge(res http.ResponseWriter, req *http.Request) {
 }
 
 func lockLogin(res http.ResponseWriter, req *http.Request) {
-	var door bast.Door
+	var door Door
 	if err := render.DecodeJSON(req.Body, &door); err != nil {
 		log.Println(err)
 		res.WriteHeader(400)
@@ -431,7 +436,7 @@ func lockLogin(res http.ResponseWriter, req *http.Request) {
 
 func addRole(res http.ResponseWriter, req *http.Request) {
 	var (
-		role bast.Role
+		role Role
 		err error
 	)
 
@@ -450,7 +455,7 @@ func addRole(res http.ResponseWriter, req *http.Request) {
 }
 
 func addUser(res http.ResponseWriter, req *http.Request) {
-	var user bast.User
+	var user User
 
 	render.DecodeJSON(req.Body, &user)
 
@@ -466,7 +471,7 @@ func addUser(res http.ResponseWriter, req *http.Request) {
 
 func listLocks(res http.ResponseWriter, req *http.Request) {
 	//array that will save each door/lock from the database
-	var doors []bast.Door
+	var doors []Door
 
 	//variable will save the querry command for locks
 	rows, err := db.Query(`select Doors.name from Doors`)
@@ -479,7 +484,7 @@ func listLocks(res http.ResponseWriter, req *http.Request) {
 		defer rows.Close()
 		for rows.Next(){
 			//variable to save the door/lock
-			var door bast.Door
+			var door Door
 
 			if err := rows.Scan(&door.Name); err != nil{
 				log.Println(err)
@@ -500,7 +505,7 @@ func listLocks(res http.ResponseWriter, req *http.Request) {
 
 func listRoles(res http.ResponseWriter, req *http.Request) {
 	//array that will save the each role from the database
-	var roles []bast.Role
+	var roles []Role
 
 	//variable will save the querry command
 	rows, err := db.Query(`select Roles.name from Roles`)
@@ -513,7 +518,7 @@ func listRoles(res http.ResponseWriter, req *http.Request) {
 		defer rows.Close()
 		for rows.Next() {
 			//variable to save the role
-			var role bast.Role
+			var role Role
 
 			if err := rows.Scan(&role.Name); err != nil {
 				log.Println(err)
@@ -534,7 +539,7 @@ func listRoles(res http.ResponseWriter, req *http.Request) {
 }
 
 func listUsers(res http.ResponseWriter, req *http.Request) {
-	var users []bast.User
+	var users []User
 
 	rows, err := db.Query(`select Users.id, Users.name, Users.email, Users.pin, Users.cardno from Users`)
 	defer rows.Close()
@@ -544,7 +549,7 @@ func listUsers(res http.ResponseWriter, req *http.Request) {
 	} else {
 		defer rows.Close()
 		for rows.Next() {
-			var user bast.User
+			var user User
 
 			if err := rows.Scan(&user.Id, &user.Name, &user.Email, &user.Pin, &user.CardNo); err != nil {
 				log.Println(err)
@@ -564,7 +569,7 @@ func listUsers(res http.ResponseWriter, req *http.Request) {
 
 func listSystems(res http.ResponseWriter, req *http.Request) {
 	var (
-		systems []bast.System
+		systems []System
 		id int64
 		rows *sql.Rows
 		err error
@@ -587,7 +592,7 @@ func listSystems(res http.ResponseWriter, req *http.Request) {
 	defer rows.Close()
 
 	for rows.Next() {
-		var system bast.System
+		var system System
 		rows.Scan(&system.Id, &system.Name)
 		systems = append(systems, system)
 	}

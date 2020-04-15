@@ -1,4 +1,4 @@
-package bast
+package main
 
 import "math/big"
 
@@ -30,7 +30,7 @@ type User struct {
 type System struct {
 	Id int64    `json:"id,omitempty"`
 	Name string `json:"name,omitempty"`
-	IdentityKey []byte `json:"identityKey,omitempty"`
+	TotpKey []byte
 }
 
 type Admin struct {

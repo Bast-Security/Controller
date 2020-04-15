@@ -1,3 +1,5 @@
+github.com/bast-security/controller/bast v0.0.0-20200413082109-cfdddcd969b8 h1:P3xFmmdnRfbn4tsZMQph2H6DWrMoCdJdBv8wCZpxGjY=
+github.com/bast-security/controller/bast v0.0.0-20200413082109-cfdddcd969b8/go.mod h1:Lu9tTQoM3/Mk6FmYtOXcW/N2N5R8VVYKjjv/Q/TJ/HE=
 github.com/cenkalti/backoff v2.2.1+incompatible h1:tNowT99t7UNflLxfYYSlKYsBpXdEet03Pg2g16Swow4=
 github.com/cenkalti/backoff v2.2.1+incompatible/go.mod h1:90ReRw6GdpyfrHakVjL/QHaoyV4aDUVVkXQJJJ3NXXM=
 github.com/dgrijalva/jwt-go v1.0.2 h1:KPldsxuKGsS2FPWsNeg9ZO18aCrGKujPoWXn2yo+KQM=

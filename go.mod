@@ -3,6 +3,7 @@ module github.com/bast-security/controller
 go 1.14
 
 require (
+	github.com/bast-security/controller/bast v0.0.0-20200413082109-cfdddcd969b8
 	github.com/dgrijalva/jwt-go v3.2.0+incompatible
 	github.com/go-chi/chi v4.0.3+incompatible
 	github.com/go-chi/jwtauth v4.0.4+incompatible
