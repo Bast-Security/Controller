@@ -13,6 +13,11 @@ type Door struct {
 	Method int    `json:"method,omitemtpy"`
 }
 
+type Totp struct {
+	Expires int64 `json:"expires"`
+	Code string `json:"code"`
+}
+
 type Role struct {
 	System int64  `json:"system,omitempty"`
 	Name   string `json:"name,omitempty"`

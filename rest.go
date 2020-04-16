@@ -14,10 +14,13 @@ import (
 	"crypto/elliptic"
 	"crypto/ecdsa"
 	"crypto/rand"
+	// "crypto/hmac"
 	"crypto/sha256"
 	"encoding/asn1"
+	// "encoding/binary"
 	"database/sql"
 	"net/http"
+	// "time"
 	"fmt"
 	"log"
 )
@@ -82,6 +85,7 @@ func router() http.Handler {
 				router.Route("/users", func(router chi.Router) {
 					router.Post("/", addUser)
 					router.Get("/", listUsers)
+					router.Get("/totp", totp)
 
 					router.Route("/{userId}", func(router chi.Router) {
 						router.Put("/", unimp)
@@ -100,7 +104,7 @@ func router() http.Handler {
 
 					router.Route("/{role}", func(router chi.Router) {
 						router.Put("/", unimp)
-						router.Delete("/", unimp)
+						router.Delete("/", delRole)
 						router.Get("/log", unimp)
 					})
 				})
@@ -434,6 +438,37 @@ func lockLogin(res http.ResponseWriter, req *http.Request) {
 	}
 }
 
+func totp(res http.ResponseWriter, req *http.Request) {
+	/*
+	var (
+		totpKey []byte
+		err     error
+	)
+
+	systemId := req.Context().Value("systemId").(int64)
+
+	row := db.QueryRow(`SELECT FROM Systems totpKey WHERE id = ?;`, systemId)
+
+	if err = row.Scan(&totpKey); err != nil {
+		log.Println(err)
+		res.WriteHeader(400)
+	}
+
+	dur := 60 * 5 // 5 mins
+	now := time.Now().Unix()
+	expires := now + dur
+	ctr := math.Floor(now / dur)
+
+	mac := hmac.New(sha256.New, totpKey)
+	binary.Write(mac, binary.LittleEndian, ctr)
+	tag := mac.Sum(nil)
+	
+	payload := Totp{ expires, }
+	render.JSON(res, req, payload)
+	*/
+	res.WriteHeader(500)
+}
+
 func addRole(res http.ResponseWriter, req *http.Request) {
 	var (
 		role Role
@@ -452,6 +487,19 @@ func addRole(res http.ResponseWriter, req *http.Request) {
 	} else {
 		res.WriteHeader(200)
 	}
+}
+
+func delRole(res http.ResponseWriter, req *http.Request) {
+	system := req.Context().Value("systemId").(int64)
+	name := chi.URLParam(req, "role")
+
+	if _, err := db.Exec(`DELETE FROM Roles WHERE name=? AND system=?`, name, system); err != nil {
+		log.Println(err)
+		res.WriteHeader(400)
+		return
+	}
+
+	res.WriteHeader(200)
 }
 
 func addUser(res http.ResponseWriter, req *http.Request) {
