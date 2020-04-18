@@ -547,8 +547,10 @@ func listLocks(res http.ResponseWriter, req *http.Request) {
 	//array that will save each door/lock from the database
 	var doors []Door
 
+	system := req.Context().Value("systemId").(int64)
+
 	//variable will save the querry command for locks
-	rows, err := db.Query(`select Doors.name from Doors`)
+	rows, err := db.Query(`SELECT Doors.name FROM Doors WHERE system=?`, system)
 	defer rows.Close()
 
 	//if statement makes sure that the query was a success; if successful then each row in the Doors scheme is read
@@ -584,7 +586,7 @@ func listRoles(res http.ResponseWriter, req *http.Request) {
 	system := req.Context().Value("systemId").(int64)
 
 	//variable will save the querry command
-	rows, err := db.Query(`SELECT Roles.name FROM Roles WHERE System=?;`, system)
+	rows, err := db.Query(`SELECT Roles.name FROM Roles WHERE system=?;`, system)
 	defer rows.Close()
 
 	//if statement makes to sure that query was a success; if successful then each row in the Roles scheme is read
@@ -616,7 +618,9 @@ func listRoles(res http.ResponseWriter, req *http.Request) {
 func listUsers(res http.ResponseWriter, req *http.Request) {
 	var users []User
 
-	rows, err := db.Query(`select Users.id, Users.name, Users.email, Users.pin, Users.cardno from Users`)
+	system := req.Context().Value("systemId").(int64)
+
+	rows, err := db.Query(`SELECT Users.id, Users.name, Users.email, Users.pin, Users.cardno FROM Users WHERE system=?;`, system)
 	defer rows.Close()
 
 	if err != nil {
