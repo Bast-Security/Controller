@@ -490,10 +490,18 @@ func addRole(res http.ResponseWriter, req *http.Request) {
 }
 
 func delRole(res http.ResponseWriter, req *http.Request) {
+	var err error
+
 	system := req.Context().Value("systemId").(int64)
 	name := chi.URLParam(req, "role")
 
-	if _, err := db.Exec(`DELETE FROM Roles WHERE name=? AND system=?`, name, system); err != nil {
+	if _, err = db.Exec(`DELETE FROM UserRole WHERE role=? AND system=?;`, name, system); err == nil {
+		if _, err = db.Exec(`DELETE FROM Permissions WHERE role=? AND system=?;`, name, system); err == nil {
+			_, err = db.Exec(`DELETE FROM Roles WHERE name=? AND system=?;`, name, system)
+		}
+	}
+
+	if err != nil {
 		log.Println(err)
 		res.WriteHeader(400)
 		return
