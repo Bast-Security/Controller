@@ -85,7 +85,6 @@ func router() http.Handler {
 				router.Route("/users", func(router chi.Router) {
 					router.Post("/", addUser)
 					router.Get("/", listUsers)
-					router.Get("/totp", totp)
 
 					router.Route("/{userId}", func(router chi.Router) {
 						router.Put("/", unimp)
@@ -513,9 +512,10 @@ func delRole(res http.ResponseWriter, req *http.Request) {
 func addUser(res http.ResponseWriter, req *http.Request) {
 	var user User
 
+	system := req.Context().Value("systemId").(int64)
 	render.DecodeJSON(req.Body, &user)
 
-	_, err := db.Exec(`INSERT INTO Users (name, email, pin, cardno) VALUES (?, ?, ?, ?);`, user.Name, user.Email, user.Pin, user.CardNo)
+	_, err := db.Exec(`INSERT INTO Users (system, name, email, pin, cardno) VALUES (?, ?, ?, ?, ?);`, system, user.Name, user.Email, user.Pin, user.CardNo)
 
 	if err != nil {
 		log.Println(err)
