@@ -89,7 +89,7 @@ func router() http.Handler {
 
 					router.Route("/{userId}", func(router chi.Router) {
 						router.Put("/", unimp)
-						router.Delete("/", unimp)
+						router.Delete("/", delUser)
 						router.Get("/log", unimp)
 					})
 				})
@@ -523,6 +523,25 @@ func addUser(res http.ResponseWriter, req *http.Request) {
 	} else {
 		res.WriteHeader(200)
 	}
+}
+
+func delUser(res http.ResponseWriter, req *http.Request) {
+	var err error
+
+	system := req.Context().Value("systemId").(int64)
+	userId := chi.URLParam(req, "userId")
+
+	if _, err = db.Exec(`DELETE FROM UserRole WHERE userid=? AND system=?;`, userId, system); err == nil {
+		_, err = db.Exec(`DELETE FROM Users WHERE id=? AND system=?;`, userId, system)
+	}
+
+	if err != nil {
+		log.Println(err)
+		res.WriteHeader(400)
+		return
+	}
+
+	res.WriteHeader(200)
 }
 
 func listLocks(res http.ResponseWriter, req *http.Request) {
