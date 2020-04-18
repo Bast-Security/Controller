@@ -6,6 +6,7 @@ import (
 	"github.com/go-chi/render"
 	"github.com/go-chi/jwtauth"
 	jwt "github.com/dgrijalva/jwt-go"
+	"github.com/fabiocolacio/hotp"
 
 	"strconv"
 	"context"
@@ -14,13 +15,11 @@ import (
 	"crypto/elliptic"
 	"crypto/ecdsa"
 	"crypto/rand"
-	// "crypto/hmac"
 	"crypto/sha256"
 	"encoding/asn1"
-	// "encoding/binary"
 	"database/sql"
 	"net/http"
-	// "time"
+	"time"
 	"fmt"
 	"log"
 )
@@ -81,6 +80,8 @@ func router() http.Handler {
 
 			router.Route("/{systemId}", func(router chi.Router) {
 				router.Use(systemContext)
+
+				router.Get("/totp", totp)
 
 				router.Route("/users", func(router chi.Router) {
 					router.Post("/", addUser)
@@ -438,10 +439,13 @@ func lockLogin(res http.ResponseWriter, req *http.Request) {
 }
 
 func totp(res http.ResponseWriter, req *http.Request) {
-	/*
 	var (
-		totpKey []byte
-		err     error
+		totpKey  []byte
+		now      int64
+		duration int64
+		epoch    int64
+		digits   int
+		err      error
 	)
 
 	systemId := req.Context().Value("systemId").(int64)
@@ -453,19 +457,14 @@ func totp(res http.ResponseWriter, req *http.Request) {
 		res.WriteHeader(400)
 	}
 
-	dur := 60 * 5 // 5 mins
-	now := time.Now().Unix()
-	expires := now + dur
-	ctr := math.Floor(now / dur)
+	duration = 60 * 5 // 5 mins
+	now = time.Now().Unix()
+	epoch = 0
+	digits = 6
 
-	mac := hmac.New(sha256.New, totpKey)
-	binary.Write(mac, binary.LittleEndian, ctr)
-	tag := mac.Sum(nil)
+	code := hotp.Totp(totpKey, now, epoch, duration, digits)
 	
-	payload := Totp{ expires, }
-	render.JSON(res, req, payload)
-	*/
-	res.WriteHeader(500)
+	render.JSON(res, req, map[string]int{ "code": code })
 }
 
 func addRole(res http.ResponseWriter, req *http.Request) {
