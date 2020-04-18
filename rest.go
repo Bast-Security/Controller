@@ -581,8 +581,10 @@ func listRoles(res http.ResponseWriter, req *http.Request) {
 	//array that will save the each role from the database
 	var roles []Role
 
+	system := req.Context().Value("systemId").(int64)
+
 	//variable will save the querry command
-	rows, err := db.Query(`select Roles.name from Roles`)
+	rows, err := db.Query(`SELECT Roles.name FROM Roles WHERE System=?;`, system)
 	defer rows.Close()
 
 	//if statement makes to sure that query was a success; if successful then each row in the Roles scheme is read
@@ -609,7 +611,6 @@ func listRoles(res http.ResponseWriter, req *http.Request) {
 
 	//converts array into a JSON and sends it to requestor
 	render.JSON(res, req, roles)
-
 }
 
 func listUsers(res http.ResponseWriter, req *http.Request) {
