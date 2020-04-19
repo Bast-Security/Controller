@@ -463,7 +463,7 @@ func totp(res http.ResponseWriter, req *http.Request) {
 	digits = 6
 
 	code := hotp.Totp(totpKey, now, epoch, duration, digits)
-	
+
 	render.JSON(res, req, map[string]int{ "code": code })
 }
 
@@ -514,7 +514,7 @@ func addUser(res http.ResponseWriter, req *http.Request) {
 	system := req.Context().Value("systemId").(int64)
 	render.DecodeJSON(req.Body, &user)
 
-	_, err := db.Exec(`INSERT INTO Users (system, name, email, pin, cardno) VALUES (?, ?, ?, ?, ?);`, system, user.Name, user.Email, user.Pin, user.CardNo)
+	_, err := db.Exec(`INSERT INTO Users (system, name, email, pin, cardno, phone) VALUES (?, ?, ?, ?, ?, ?);`, system, user.Name, user.Email, user.Pin, user.CardNo, user.Phone)
 
 	if err != nil {
 		log.Println(err)

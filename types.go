@@ -30,6 +30,7 @@ type User struct {
 	Email  string `json:"email,omitempty"`
 	Pin    string `json:"pin,omitempty"`
 	CardNo string `json:"cardno,omitempty"`
+	Phone  string `json:"phone,omitempty"`
 }
 
 type System struct {
