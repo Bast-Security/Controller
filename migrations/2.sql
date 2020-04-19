@@ -1,0 +1,5 @@
+
+ALTER TABLE Users
+ADD phone VARCHAR(32),
+ALTER COLUMN cardno VARCHAR(32);
+
