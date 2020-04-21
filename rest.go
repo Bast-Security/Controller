@@ -620,7 +620,7 @@ func listUsers(res http.ResponseWriter, req *http.Request) {
 
 	system := req.Context().Value("systemId").(int64)
 
-	rows, err := db.Query(`SELECT Users.id, Users.name, Users.email, Users.pin, Users.cardno FROM Users WHERE system=?;`, system)
+	rows, err := db.Query(`SELECT Users.id, Users.name, Users.email, Users.phone, Users.pin, Users.cardno FROM Users WHERE system=?;`, system)
 	defer rows.Close()
 
 	if err != nil {
@@ -630,7 +630,7 @@ func listUsers(res http.ResponseWriter, req *http.Request) {
 		for rows.Next() {
 			var user User
 
-			if err := rows.Scan(&user.Id, &user.Name, &user.Email, &user.Pin, &user.CardNo); err != nil {
+			if err := rows.Scan(&user.Id, &user.Name, &user.Email, &user.Phone, &user.Pin, &user.CardNo); err != nil {
 				log.Println(err)
 				return
 			}
