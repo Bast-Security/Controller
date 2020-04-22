@@ -103,7 +103,8 @@ func router() http.Handler {
 					router.Get("/", listRoles)
 
 					router.Route("/{role}", func(router chi.Router) {
-						router.Put("/", unimp)
+						router.Get("/", getRole)
+						router.Put("/", editRole)
 						router.Delete("/", delRole)
 						router.Get("/log", unimp)
 					})
@@ -485,6 +486,81 @@ func addRole(res http.ResponseWriter, req *http.Request) {
 	} else {
 		res.WriteHeader(200)
 	}
+}
+
+func getRole(res http.ResponseWriter, req *http.Request) {
+	var (
+		role Role
+		row *sql.Row
+		rows *sql.Rows
+		err error
+	)
+
+	system := req.Context().Value("systemId").(int64)
+	name := chi.URLParam(req, "role")
+
+	row = db.QueryRow(`SELECT id, FROM Roles WHERE system=? AND name=?;`, system, name)
+
+	if err = row.Scan(&role.Id); err == nil {
+		role.Name = name
+		role.System = system
+
+		if rows, err = db.Query(`SELECT door FROM Permissions WHERE system=? AND role=?;`, system, role.Id); err == nil {
+			defer rows.Close()
+
+			for rows.Next() {
+				var door Door
+
+				rows.Scan(&door.Id)
+
+				row = db.QueryRow(`SELECT name FROM Doors WHERE id=?`, door.Id)
+				row.Scan(&door.Name)
+
+				role.Doors = append(role.Doors, door)
+			}
+		}
+	}
+
+	if err != nil {
+		log.Println("Failed to fetch role: ", err)
+		res.WriteHeader(404)
+		return
+	}
+
+	render.JSON(res, req, role)
+}
+
+func editRole(res http.ResponseWriter, req *http.Request) {
+	var role Role
+
+	system := req.Context().Value("systemId").(int64)
+	name := chi.URLParam(req, "role")
+
+	render.DecodeJSON(req.Body, &role)
+
+	if len(role.Name) > 0 {
+		if _, err := db.Exec(`UPDATE Roles SET name=? WHERE name=? AND system=?;`, role.Name, name, system); err != nil {
+			log.Println("Failed to update role name: ", err)
+			res.WriteHeader(500)
+			return
+		}
+	}
+
+	if _, err := db.Exec(`DELETE FROM Permissions WHERE role=?;`, role.Id); err != nil {
+		log.Println("Failed to remove old permission set: ", err)
+		res.WriteHeader(500)
+		return
+	}
+
+	for _, door := range role.Doors {
+		if _, err := db.Exec(`INSERT INTO Permissions (system, role, door) VALUES (?, ?, ?);`, system, role.Id, door.Id); err != nil {
+			log.Println("Failed to add permission: ", err)
+			res.WriteHeader(500)
+			return
+		}
+	}
+
+	res.WriteHeader(200)
 }
 
 func delRole(res http.ResponseWriter, req *http.Request) {

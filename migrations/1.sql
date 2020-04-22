@@ -21,36 +21,39 @@ CREATE TABLE IF NOT EXISTS Users (
     system INTEGER NOT NULL,
     name VARCHAR(32) NOT NULL,
     email VARCHAR(32) NOT NULL,
+    phone VARCHAR(32),
     pin VARCHAR(32),
-    cardno INTEGER,
+    cardno VARCHAR(32),
     PRIMARY KEY(id, system),
     FOREIGN KEY (system) REFERENCES Systems (id)
 );
 
 CREATE TABLE IF NOT EXISTS Roles (
+    id INTEGER NOT NULL AUTO_INCREMENT,
     name VARCHAR(32) NOT NULL,
     system INTEGER NOT NULL,
-    PRIMARY KEY (name, system),
+    PRIMARY KEY (id),
+    UNIQUE KEY (name, system),
     FOREIGN KEY (system) REFERENCES Systems (id)
 );
 
 CREATE TABLE IF NOT EXISTS UserRole (
     system INTEGER NOT NULL,
     userid INTEGER NOT NULL,
-    role VARCHAR(32) NOT NULL,
+    role INTEGER NOT NULL,
     PRIMARY KEY (system, userid, role),
     FOREIGN KEY (userid) REFERENCES Users(id),
-    FOREIGN KEY (role) REFERENCES Roles(name),
+    FOREIGN KEY (role) REFERENCES Roles(id),
     FOREIGN KEY (system) REFERENCES Systems (id)
 );
 
 CREATE TABLE IF NOT EXISTS Permissions (
     system INTEGER NOT NULL,
-    role VARCHAR(32) NOT NULL,
+    role INTEGER NOT NULL,
     door INTEGER NOT NULL,
     PRIMARY KEY (role, door, system),
     FOREIGN KEY (system) REFERENCES Systems (id),
-    FOREIGN KEY (role) REFERENCES Roles (name),
+    FOREIGN KEY (role) REFERENCES Roles (id),
     FOREIGN KEY (door) REFERENCES Doors (id)
 );
 
