@@ -654,7 +654,67 @@ func getUser(res http.ResponseWriter, req *http.Request) {
 }
 
 func editUser(res http.ResponseWriter, req *http.Request) {
+	system := req.Context().Value("systemId").(int64)
+	userId := chi.URLParam(req, "userId")
 
+	var user User
+	render.DecodeJSON(req.Body, &user)
+
+	if len(user.Name) > 0 {
+		if _, err := db.Exec(`UPDATE Users SET name=? WHERE id=?;`, user.Name, userId); err != nil {
+			log.Println(err)
+			res.WriteHeader(500)
+			return
+		}
+	}
+
+	if len(user.Email) > 0 {
+		if _, err := db.Exec(`UPDATE Users SET email=? WHERE id=?;`, user.Email, userId); err != nil {
+			log.Println(err)
+			res.WriteHeader(500)
+			return
+		}
+	}
+
+	if len(user.Phone) > 0 {
+		if _, err := db.Exec(`UPDATE Users SET phone=? WHERE id=?;`, user.Phone, userId); err != nil {
+			log.Println(err)
+			res.WriteHeader(500)
+			return
+		}
+	}
+
+	if len(user.Pin) > 0 {
+		if _, err := db.Exec(`UPDATE Users SET pin=? WHERE id=?;`, user.Pin, userId); err != nil {
+			log.Println(err)
+			res.WriteHeader(500)
+			return
+		}
+	}
+
+	if len(user.CardNo) > 0 {
+		if _, err := db.Exec(`UPDATE Users SET cardno=? WHERE id=?;`, user.CardNo, userId); err != nil {
+			log.Println(err)
+			res.WriteHeader(500)
+			return
+		}
+	}
+
+	if _, err := db.Exec(`DELETE FROM Roles WHERE userid=?;`, userId); err != nil {
+		log.Println(err)
+		res.WriteHeader(500)
+		return
+	}
+
+	for _, role := range user.Roles {
+		if _, err := db.Exec(`INSERT INTO UserRole (system, userid, role) VALUES (?, ?, ?);`, system, userId, role.Id); err != nil {
+			log.Println(err)
+			res.WriteHeader(500)
+			return
+		}
+	}
+
+	res.WriteHeader(200)
 }
 
 func delUser(res http.ResponseWriter, req *http.Request) {
