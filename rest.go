@@ -18,6 +18,7 @@ import (
 	"crypto/sha256"
 	"encoding/asn1"
 	"database/sql"
+	"io/ioutil"
 	"net/http"
 	"time"
 	"fmt"
@@ -89,7 +90,7 @@ func router() http.Handler {
 
 					router.Route("/{userId}", func(router chi.Router) {
 						router.Get("/", getUser)
-						router.Put("/", unimp)
+						router.Put("/", editUser)
 						router.Delete("/", delUser)
 						router.Get("/log", unimp)
 					})
@@ -118,8 +119,11 @@ func router() http.Handler {
 
 	router.Route("/locks", func(router chi.Router) {
 		router.Post("/register", addLock)
-		router.Post("/challenge", lockChallenge)
-		router.Post("/login", lockLogin)
+
+		router.Route("/{lockId}", func(router chi.Router) {
+			router.Get("/", lockChallenge)
+			router.Post("/login", lockLogin)
+		})
 	})
 
 	return router
@@ -366,26 +370,28 @@ func lockChallenge(res http.ResponseWriter, req *http.Request) {
 		return
 	}
 
+	lockId := chi.URLParam(req, "lockId")
+
+	if _, err := db.Exec(`UPDATE Doors SET challenge = ? WHERE id = ?;`, challengeData, lockId); err != nil {
+		log.Println(err)
+		res.WriteHeader(400)
+		return
+	}
+
 	var door Door
-	if err := render.DecodeJSON(req.Body, &door); err != nil {
-		log.Println(err)
-		res.WriteHeader(400)
-		return
-	}
-
-	if _, err := db.Exec(`UPDATE Doors SET challenge = ? WHERE id = ?;`, challengeData, door.Id); err != nil {
-		log.Println(err)
-		res.WriteHeader(400)
-		return
-	}
-
 	door.Challenge = challengeData
 	render.JSON(res, req, door)
 }
 
 func lockLogin(res http.ResponseWriter, req *http.Request) {
-	var door Door
-	if err := render.DecodeJSON(req.Body, &door); err != nil {
+	var (
+		lockId int64
+		err error
+	)
+
+	lockId, err = strconv.ParseInt(chi.URLParam(req, "lockId"), 10, 64)
+
+	if err != nil {
 		log.Println(err)
 		res.WriteHeader(400)
 		return
@@ -393,12 +399,13 @@ func lockLogin(res http.ResponseWriter, req *http.Request) {
 
 	var (
 		challenge []byte
+		response []byte
 		pubKey ecdsa.PublicKey = ecdsa.PublicKey{ Curve: elliptic.P384(), X: new(big.Int), Y: new(big.Int) }
 		x []byte
 		y []byte
 	)
 
-	row := db.QueryRow(`SELECT challenge, keyX, keyY FROM Doors WHERE id = ?;`, door.Id)
+	row := db.QueryRow(`SELECT challenge, keyX, keyY FROM Doors WHERE id = ?;`, lockId)
 
 	if err := row.Scan(&challenge, &x, &y); err != nil {
 		log.Println(err)
@@ -416,8 +423,15 @@ func lockLogin(res http.ResponseWriter, req *http.Request) {
 		return
 	}
 
+	response, err = ioutil.ReadAll(req.Body)
+	if err != nil {
+		log.Println(err)
+		res.WriteHeader(500)
+		return
+	}
+
 	sig := &struct{ R, S *big.Int }{}
-	if _, err := asn1.Unmarshal(door.Response, sig); err != nil {
+	if _, err := asn1.Unmarshal(response, sig); err != nil {
 		log.Println(err)
 		res.WriteHeader(400)
 		return
@@ -428,7 +442,7 @@ func lockLogin(res http.ResponseWriter, req *http.Request) {
 	hashed := sha.Sum(nil)
 
 	if ecdsa.Verify(&pubKey, hashed, sig.R, sig.S) {
-		if _, token, err := tokenAuth.Encode(jwt.MapClaims{ "doorid": door.Id }); err != nil {
+		if _, token, err := tokenAuth.Encode(jwt.MapClaims{ "doorid": lockId }); err != nil {
 			log.Println(err)
 			res.WriteHeader(500)
 		} else {
@@ -637,6 +651,10 @@ func getUser(res http.ResponseWriter, req *http.Request) {
 	}
 
 	render.JSON(res, req, user)
+}
+
+func editUser(res http.ResponseWriter, req *http.Request) {
+
 }
 
 func delUser(res http.ResponseWriter, req *http.Request) {

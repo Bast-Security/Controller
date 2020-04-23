@@ -10,7 +10,7 @@ type Door struct {
 	Challenge []byte   `json:"challenge,omitempty"`
 	Response  []byte   `json:"response,omitempty"`
 	Name      string   `json:"name,omitempty"`
-	Method    int      `json:"method,omitemtpy"`
+	Method    int      `json:"method,omitempty"`
 }
 
 type Totp struct {
