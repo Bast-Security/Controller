@@ -88,6 +88,7 @@ func router() http.Handler {
 					router.Get("/", listUsers)
 
 					router.Route("/{userId}", func(router chi.Router) {
+						router.Get("/", getUser)
 						router.Put("/", unimp)
 						router.Delete("/", delUser)
 						router.Get("/log", unimp)
@@ -598,6 +599,44 @@ func addUser(res http.ResponseWriter, req *http.Request) {
 	} else {
 		res.WriteHeader(200)
 	}
+}
+
+func getUser(res http.ResponseWriter, req *http.Request) {
+	var (
+		user User
+		row *sql.Row
+		rows *sql.Rows
+		err error
+	)
+
+	system := req.Context().Value("systemId").(int64)
+	userId := chi.URLParam(req, "userId")
+
+	row = db.QueryRow(`SELECT name, email, phone, pin, cardno FROM Users WHERE id=? AND system=?`, userId, system)
+	if err = row.Scan(&user.Name, &user.Email, &user.Phone, &user.Pin, &user.CardNo); err == nil {
+		if rows, err = db.Query(`SELECT role FROM Roles WHERE system=? userid=?;`, system, userId); err == nil {
+			defer rows.Close()
+
+			for rows.Next() {
+				var role Role
+
+				rows.Scan(&role.Id)
+
+				row = db.QueryRow(`SELECT name FROM Roles WHERE id=?;`, role.Id)
+
+				if err = rows.Scan(&role.Name); err == nil {
+					user.Roles = append(user.Roles, role)
+				}
+			}
+		}
+	}
+
+	if err != nil {
+		log.Println(err)
+		res.WriteHeader(404)
+	}
+
+	render.JSON(res, req, user)
 }
 
 func delUser(res http.ResponseWriter, req *http.Request) {

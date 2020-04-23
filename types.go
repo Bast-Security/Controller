@@ -39,6 +39,7 @@ type User struct {
 	Pin    string `json:"pin,omitempty"`
 	CardNo string `json:"cardno,omitempty"`
 	Phone  string `json:"phone,omitempty"`
+	Roles  []Role `json:"roles,omitempty"`
 }
 
 type System struct {
