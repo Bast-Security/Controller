@@ -123,6 +123,7 @@ func router() http.Handler {
 		router.Route("/{lockId}", func(router chi.Router) {
 			router.Get("/", lockChallenge)
 			router.Post("/login", lockLogin)
+			router.Get("/access", accessRequest)
 		})
 	})
 
@@ -361,6 +362,55 @@ func addLock(res http.ResponseWriter, req *http.Request) {
 	}
 }
 
+func accessRequest(res http.ResponseWriter, req *http.Request) {
+	var creds struct{
+			Card string `json:"card,omitempty"`
+			Pin string `json:"pin,omitempty"`
+		}
+	
+	if err := render.DecodeJSON(req.Body, &creds); err != nil {
+		log.Println(err)
+		res.WriteHeader(500)
+		return
+	}
+
+	lockId := chi.URLParam(req, "lockId")
+
+	var row *sql.Row
+
+	if len(creds.Card) > 0 {
+		row = db.QueryRow(`SELECT id FROM Users
+				   INNER JOIN UserRole ON UserRole.userid = Users.id
+				   INNER JOIN Permissions ON UserRole.role = Permissions.role
+				   INNER JOIN Doors ON Permissions.system = Doors.system
+				   WHERE Permissions.door = ?
+				   AND cardno = ?`, lockId, creds.Card)
+	} else if len(creds.Pin) > 0 {
+		row = db.QueryRow(`SELECT id FROM Users
+				   INNER JOIN UserRole ON UserRole.userid = Users.id
+				   INNER JOIN Permissions ON UserRole.role = Permissions.role
+				   INNER JOIN Doors ON Permissions.system = Doors.system
+				   WHERE Permissions.door = ?
+				   AND pin = ?`, lockId, creds.Pin)
+	} else {
+		res.WriteHeader(403)
+		return
+	}
+	
+
+	var userId string
+	if err := row.Scan(&userId); err == sql.ErrNoRows {
+		res.WriteHeader(403)
+		return
+	} else if err != nil {
+		log.Println(err)
+		res.WriteHeader(500)
+		return
+	} else {
+		log.Println("ACCESS GRANTED TO ", userId, " at Door ", lockId)
+		res.WriteHeader(200)
+	}
+}
 
 func lockChallenge(res http.ResponseWriter, req *http.Request) {
 	challengeData := make([]byte, 16)
