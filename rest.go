@@ -123,7 +123,7 @@ func router() http.Handler {
 		router.Route("/{lockId}", func(router chi.Router) {
 			router.Get("/", lockChallenge)
 			router.Post("/login", lockLogin)
-			router.Get("/access", accessRequest)
+			router.Post("/access", accessRequest)
 		})
 	})
 
