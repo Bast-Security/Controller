@@ -379,14 +379,14 @@ func accessRequest(res http.ResponseWriter, req *http.Request) {
 	var row *sql.Row
 
 	if len(creds.Card) > 0 {
-		row = db.QueryRow(`SELECT id FROM Users
+		row = db.QueryRow(`SELECT Users.id FROM Users
 				   INNER JOIN UserRole ON UserRole.userid = Users.id
 				   INNER JOIN Permissions ON UserRole.role = Permissions.role
 				   INNER JOIN Doors ON Permissions.system = Doors.system
 				   WHERE Permissions.door = ?
 				   AND cardno = ?`, lockId, creds.Card)
 	} else if len(creds.Pin) > 0 {
-		row = db.QueryRow(`SELECT id FROM Users
+		row = db.QueryRow(`SELECT Users.id FROM Users
 				   INNER JOIN UserRole ON UserRole.userid = Users.id
 				   INNER JOIN Permissions ON UserRole.role = Permissions.role
 				   INNER JOIN Doors ON Permissions.system = Doors.system
