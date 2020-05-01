@@ -22,7 +22,8 @@ type Totp struct {
 }
 
 type Transaction struct {
-	Door int64      `json:"door,omitempty"`
+	DoorName string `json:"door,omitempty"`
+	Door int64
 	Time time.Time	`json:"time"`
 	Pin string      `json:"pin"`
 	Card string     `json:"card"`

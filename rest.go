@@ -61,11 +61,6 @@ func router() http.Handler {
 
 	router.Use(middleware.Logger)
 
-	unimp := func(res http.ResponseWriter, req *http.Request) {
-		res.WriteHeader(500)
-		fmt.Fprintln(res, "This route has not been implemented yet")
-	}
-
 	router.Post("/register", handleRegister)
 	router.Post("/challenge", getChallenge)
 	router.Post("/login", handleLogin)
@@ -102,7 +97,7 @@ func router() http.Handler {
 
 					router.Route("/{lockId}", func(router chi.Router) {
 						router.Delete("/", delLock)
-						router.Get("/log", unimp)
+						router.Get("/log", lockLog)
 					})
 				})
 
@@ -117,7 +112,7 @@ func router() http.Handler {
 					})
 				})
 
-				router.Get("/log", unimp)
+				router.Get("/log", systemLog)
 			})
 		})
 	})
@@ -464,7 +459,7 @@ func systemLog(res http.ResponseWriter, req *http.Request) {
 
 	var transactions []Transaction
 
-	if rows, err := db.Query(`SELECT door, time, pin, card FROM History
+	if rows, err := db.Query(`SELECT Doors.name, History.time, History.pin, History.card FROM History
 	                          INNER JOIN Doors ON Doors.id = History.door
 		                  WHERE Doors.system=?
 		                  ORDER BY time DESC;`, systemId); err == nil {
@@ -473,7 +468,7 @@ func systemLog(res http.ResponseWriter, req *http.Request) {
 		for rows.Next() {
 			var transaction Transaction
 
-			if err := rows.Scan(&transaction.Time, &transaction.Pin, &transaction.Card); err != nil {
+			if err := rows.Scan(&transaction.DoorName, &transaction.Time, &transaction.Pin, &transaction.Card); err != nil {
 				log.Println("Failed to fetch transactions ", err)
 				res.WriteHeader(500)
 				return
