@@ -100,6 +100,10 @@ func router() http.Handler {
 
 				router.Route("/locks", func(router chi.Router) {
 					router.Get("/", listLocks)
+
+					router.Route("/{lockId}", func(router chi.Router) {
+						router.Delete("/", delLock)
+					})
 				})
 
 				router.Route("/roles", func(router chi.Router) {
@@ -404,6 +408,29 @@ func addLock(res http.ResponseWriter, req *http.Request) {
 		log.Println("Result is null!")
 		res.WriteHeader(500)
 	}
+}
+
+func delLock(res http.ResponseWriter, req *http.Request) {
+	lockId := chi.URLParam(req, "lockId")
+	systemId := chi.URLParam(req, "systemId")
+
+	var err error
+
+	if err == nil {
+		_, err = db.Exec(`DELETE FROM Permissions WHERE system=? AND door=?;`, systemId, lockId)
+	}
+
+	if err == nil {
+		_, err = db.Exec(`DELETE FROM Doors WHERE system=? AND id=?;`, systemId, lockId)
+	}
+
+	if err != nil {
+		log.Println("Failed to delete lock '", lockId, "' of system '", systemId, "' with error: ", err)
+		res.WriteHeader(500)
+		return
+	}
+
+	res.WriteHeader(200)
 }
 
 func accessRequest(res http.ResponseWriter, req *http.Request) {
