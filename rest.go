@@ -437,7 +437,7 @@ func lockLog(res http.ResponseWriter, req *http.Request) {
 
 	var transactions []Transaction
 
-	if rows, err := db.Query(`SELECT time, pin, card FROM History WHERE door=?;`, lockId); err == nil {
+	if rows, err := db.Query(`SELECT time, pin, card FROM History WHERE door=? ORDER BY time DESC;`, lockId); err == nil {
 		defer rows.Close()
 
 		for rows.Next() {
@@ -466,7 +466,8 @@ func systemLog(res http.ResponseWriter, req *http.Request) {
 
 	if rows, err := db.Query(`SELECT door, time, pin, card FROM History
 	                          INNER JOIN Doors ON Doors.id = History.door
-		                  WHERE Doors.system=?;`, systemId); err == nil {
+		                  WHERE Doors.system=?
+		                  ORDER BY time DESC;`, systemId); err == nil {
 		defer rows.Close()
 
 		for rows.Next() {
