@@ -238,27 +238,27 @@ func delSystem(res http.ResponseWriter, req *http.Request) {
 	}
 
 	if err == nil {
-		db.Exec(`DELETE FROM Doors WHERE system=?;`, systemId)
+		_, err = db.Exec(`DELETE FROM Doors WHERE system=?;`, systemId)
 	}
 
 	if err == nil {
-		db.Exec(`DELETE FROM Permissions WHERE system=?;`, systemId)
+		_, err = db.Exec(`DELETE FROM Permissions WHERE system=?;`, systemId)
 	}
 
 	if err == nil {
-		db.Exec(`DELETE FROM Roles WHERE system=?;`, systemId)
+		_, err = db.Exec(`DELETE FROM Roles WHERE system=?;`, systemId)
 	}
 
 	if err == nil {
-		db.Exec(`DELETE FROM AdminSystem WHERE system=?;`, systemId)
+		_, err = db.Exec(`DELETE FROM AdminSystem WHERE system=?;`, systemId)
 	}
 
 	if err == nil {
-		db.Exec(`DELETE FROM Users WHERE system=?;`, systemId)
+		_, err = db.Exec(`DELETE FROM Users WHERE system=?;`, systemId)
 	}
 
 	if err == nil {
-		db.Exec(`DELETE FROM Systems WHERE system=?;`, systemId)
+		_, err = db.Exec(`DELETE FROM Systems WHERE id=?;`, systemId)
 	}
 
 	if err != nil {
