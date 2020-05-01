@@ -477,10 +477,28 @@ func accessRequest(res http.ResponseWriter, req *http.Request) {
 		log.Println(err)
 		res.WriteHeader(500)
 		return
-	} else {
-		log.Println("ACCESS GRANTED TO ", userId, " at Door ", lockId)
-		res.WriteHeader(200)
 	}
+
+	var err error
+
+	if len(creds.Card) > 0 && len(creds.Pin) > 0 {
+		_, err = db.Exec(`INSERT INTO History (door, card, pin) VALUES (?, ?, ?)`, lockId, creds.Card, creds.Pin)
+	} else if len(creds.Pin) > 0 {
+		_, err = db.Exec(`INSERT INTO History (door, pin) VALUES (?, ?)`, lockId, creds.Pin)
+	} else if len(creds.Card) > 0 {
+		_, err = db.Exec(`INSERT INTO History (door, card) VALUES (?, ?)`, lockId, creds.Card)
+	} else {
+		log.Println("Corrupted State (ACCESS LOG)")
+		res.WriteHeader(500)
+		return
+	}
+
+	if err != nil {
+		log.Printf("Failed to log history for door %d, card '%s', pin '%s'", lockId, creds.Card, creds.Pin)
+	}
+
+	log.Println("ACCESS GRANTED TO ", userId, " at Door ", lockId)
+	res.WriteHeader(200)
 }
 
 func lockChallenge(res http.ResponseWriter, req *http.Request) {
