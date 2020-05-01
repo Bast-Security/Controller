@@ -1,6 +1,9 @@
 package main
 
-import "math/big"
+import (
+	"math/big"
+	"time"
+)
 
 type Door struct {
 	Id        int64    `json:"id,omitempty"`
@@ -16,6 +19,13 @@ type Door struct {
 type Totp struct {
 	Expires int64  `json:"expires"`
 	Code    string `json:"code"`
+}
+
+type Transaction struct {
+	Door int64      `json:"door,omitempty"`
+	Time time.Time	`json:"time"`
+	Pin string      `json:"pin"`
+	Card string     `json:"card"`
 }
 
 type Role struct {

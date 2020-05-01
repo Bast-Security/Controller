@@ -51,7 +51,7 @@ func main() {
 		dbDB = "bast"
 	}
 
-	if db, err = sql.Open("mysql", fmt.Sprintf("%s:%s@/%s", dbUser, dbPass, dbDB)); err != nil {
+	if db, err = sql.Open("mysql", fmt.Sprintf("%s:%s@/%s?parseTime=true", dbUser, dbPass, dbDB)); err != nil {
 		log.Fatal(err)
 	}
 

@@ -94,7 +94,6 @@ func router() http.Handler {
 						router.Get("/", getUser)
 						router.Put("/", editUser)
 						router.Delete("/", delUser)
-						router.Get("/log", unimp)
 					})
 				})
 
@@ -103,6 +102,7 @@ func router() http.Handler {
 
 					router.Route("/{lockId}", func(router chi.Router) {
 						router.Delete("/", delLock)
+						router.Get("/log", unimp)
 					})
 				})
 
@@ -114,7 +114,6 @@ func router() http.Handler {
 						router.Get("/", getRole)
 						router.Put("/", editRole)
 						router.Delete("/", delRole)
-						router.Get("/log", unimp)
 					})
 				})
 
@@ -431,6 +430,33 @@ func delLock(res http.ResponseWriter, req *http.Request) {
 	}
 
 	res.WriteHeader(200)
+}
+
+func lockLog(res http.ResponseWriter, req *http.Request) {
+	lockId := chi.URLParam(req, "lockId")
+
+	var transactions []Transaction
+
+	if rows, err := db.Query(`SELECT time, pin, card FROM History WHERE door=?;`, lockId); err == nil {
+		defer rows.Close()
+
+		for rows.Next() {
+			var transaction Transaction
+
+			if err := rows.Scan(&transaction.Time, &transaction.Pin, &transaction.Card); err != nil {
+				log.Println("Failed to fetch transactions ", err)
+				res.WriteHeader(500)
+				return
+			}
+
+			transactions = append(transactions, transaction)
+		}
+	} else {
+		log.Println("Failed to fetch history for door ", lockId, ", ", err)
+		res.WriteHeader(500)
+	}
+
+	render.JSON(res, req, transactions)
 }
 
 func accessRequest(res http.ResponseWriter, req *http.Request) {
