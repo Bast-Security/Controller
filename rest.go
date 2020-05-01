@@ -459,6 +459,35 @@ func lockLog(res http.ResponseWriter, req *http.Request) {
 	render.JSON(res, req, transactions)
 }
 
+func systemLog(res http.ResponseWriter, req *http.Request) {
+	systemId := chi.URLParam(req, "systemId")
+
+	var transactions []Transaction
+
+	if rows, err := db.Query(`SELECT door, time, pin, card FROM History
+	                          INNER JOIN Doors ON Doors.id = History.door
+		                  WHERE Doors.system=?;`, systemId); err == nil {
+		defer rows.Close()
+
+		for rows.Next() {
+			var transaction Transaction
+
+			if err := rows.Scan(&transaction.Time, &transaction.Pin, &transaction.Card); err != nil {
+				log.Println("Failed to fetch transactions ", err)
+				res.WriteHeader(500)
+				return
+			}
+
+			transactions = append(transactions, transaction)
+		}
+	} else {
+		log.Println("Failed to fetch history for system ", systemId, ", ", err)
+		res.WriteHeader(500)
+	}
+
+	render.JSON(res, req, transactions)
+}
+
 func accessRequest(res http.ResponseWriter, req *http.Request) {
 	var creds struct{
 			Card string `json:"card,omitempty"`
