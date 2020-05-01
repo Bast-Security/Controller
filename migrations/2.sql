@@ -1,0 +1,11 @@
+
+CREATE TABLE IF NOT EXISTS History (
+	system INTEGER NOT NULL,
+	door INTEGER NOT NULL,
+	time DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+	pin VARCHAR(32),
+	card VARCHAR(32),
+	PRIMARY KEY (system, door, time),
+	FOREIGN KEY (system) REFERENCES Systems (id),
+	FOREIGN KEY (door) REFERENCES Doors (id)
+);
