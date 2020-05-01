@@ -82,6 +82,8 @@ func router() http.Handler {
 			router.Route("/{systemId}", func(router chi.Router) {
 				router.Use(systemContext)
 
+				router.Delete("/", delSystem)
+
 				router.Get("/totp", totp)
 
 				router.Route("/users", func(router chi.Router) {
@@ -221,6 +223,48 @@ func addSystem(res http.ResponseWriter, req *http.Request) {
 	if err != nil {
 		log.Println(err)
 		res.WriteHeader(500)
+	}
+
+	res.WriteHeader(200)
+}
+
+func delSystem(res http.ResponseWriter, req *http.Request) {
+	systemId := chi.URLParam(req, "systemId")
+
+	var err error
+
+	if err == nil {
+		_, err = db.Exec(`DELETE FROM UserRole WHERE system=?;`, systemId)
+	}
+
+	if err == nil {
+		db.Exec(`DELETE FROM Doors WHERE system=?;`, systemId)
+	}
+
+	if err == nil {
+		db.Exec(`DELETE FROM Permissions WHERE system=?;`, systemId)
+	}
+
+	if err == nil {
+		db.Exec(`DELETE FROM Roles WHERE system=?;`, systemId)
+	}
+
+	if err == nil {
+		db.Exec(`DELETE FROM AdminSystem WHERE system=?;`, systemId)
+	}
+
+	if err == nil {
+		db.Exec(`DELETE FROM Users WHERE system=?;`, systemId)
+	}
+
+	if err == nil {
+		db.Exec(`DELETE FROM Systems WHERE system=?;`, systemId)
+	}
+
+	if err != nil {
+		log.Println("Failed to delete system '", systemId, "' with error: ", err)
+		res.WriteHeader(500)
+		return
 	}
 
 	res.WriteHeader(200)
@@ -367,7 +411,7 @@ func accessRequest(res http.ResponseWriter, req *http.Request) {
 			Card string `json:"card,omitempty"`
 			Pin string `json:"pin,omitempty"`
 		}
-	
+
 	if err := render.DecodeJSON(req.Body, &creds); err != nil {
 		log.Println(err)
 		res.WriteHeader(500)
@@ -396,7 +440,7 @@ func accessRequest(res http.ResponseWriter, req *http.Request) {
 		res.WriteHeader(403)
 		return
 	}
-	
+
 
 	var userId string
 	if err := row.Scan(&userId); err == sql.ErrNoRows {
