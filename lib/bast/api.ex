@@ -3,6 +3,7 @@ defmodule Bast.Api do
 
   plug Plug.Logger
   plug :match
+  plug Plug.Parsers, parsers: [:json], json_decoder: Poison
   plug :dispatch
 
   get "/" do

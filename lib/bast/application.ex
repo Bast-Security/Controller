@@ -12,10 +12,14 @@ defmodule Bast.Application do
       
       {
         Plug.Cowboy,
-        scheme: :http,
+        scheme: :https,
         plug: Bast.Api,
         options: [
-          port: 8080
+          port: 8080,
+          otp_app: :bast,
+          cipher_suite: :strong,
+          keyfile: "priv/pki/bast.key",
+          certfile: "priv/pki/bast.crt"
         ]
       },
 
