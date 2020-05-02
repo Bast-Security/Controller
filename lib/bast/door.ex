@@ -3,8 +3,8 @@ defmodule Bast.Door do
 
   schema "doors" do
     field :name, :string
-    field :keyx, :binary
-    field :keyy, :binary
+    field :keyX, :binary
+    field :keyY, :binary
     field :challenge, :binary
     field :mode, :integer
     many_to_many :roles, Bast.Role, join_through: "roles_doors"

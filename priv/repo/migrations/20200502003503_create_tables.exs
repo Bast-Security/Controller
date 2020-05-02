@@ -8,8 +8,8 @@ defmodule Bast.Repo.Migrations.CreateTables do
     end
 
     create table(:admins) do
-      add :keyx, :binary
-      add :keyy, :binary
+      add :keyX, :binary
+      add :keyY, :binary
       add :challenge, :binary
     end
 
@@ -40,8 +40,8 @@ defmodule Bast.Repo.Migrations.CreateTables do
     create table(:doors) do
       add :system_id, references(:systems)
       add :name, :string, null: false
-      add :keyx, :binary
-      add :keyy, :binary
+      add :keyX, :binary
+      add :keyY, :binary
       add :challenge, :binary
       add :mode, :int
     end
