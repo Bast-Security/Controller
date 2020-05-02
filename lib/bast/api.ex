@@ -13,6 +13,6 @@ defmodule Bast.Api do
   forward "/systems", to: Bast.Api.Systems
 
   match _ do
-    Status.send_status(conn, Status.not_found)
+    Status.send_status(Status.not_found, conn)
   end
 end

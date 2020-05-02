@@ -1,5 +1,6 @@
 defmodule Bast.Api.Admins do
   use Plug.Router
+
   alias Bast.Repo
   alias Bast.Api.Status
   alias Bast.Admin
@@ -8,21 +9,22 @@ defmodule Bast.Api.Admins do
   plug :dispatch
 
   post "/register" do
-    inserted =
-      conn.body_params
-      |> Admin.create
-      |> Repo.insert
+    conn.body_params
+    |> Admin.create
+    |> Repo.insert
+    |> Status.status_from_crud(:create)
+    |> Status.send_status(conn)
+  end
 
-    status =
-      case inserted do
-        {:ok, _struct} -> Status.created
-        {:error, _changeset} -> Status.malformed_request
-      end
+  get "/challenge/:id" do
+    Status.send_status(Status.not_implemented, conn)
+  end
 
-    Status.send_status(conn, status)
+  put "/login/:id" do
+    Status.send_status(Status.not_implemented, conn)
   end
 
   match _ do
-    Status.send_status(conn, Status.not_found)
+    Status.send_status(Status.not_found, conn)
   end
 end

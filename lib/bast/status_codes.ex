@@ -1,4 +1,6 @@
 defmodule Bast.Api.Status do
+  def ok, do: { 200, "Ok\n" }
+
   def created, do: { 201, "Created\n" }
 
   def malformed_request, do: { 422, "Malformed Request.\n" }
@@ -11,7 +13,13 @@ defmodule Bast.Api.Status do
 
   def not_implemented, do: { 501, "Not Implemented\n" }
 
-  def send_status(conn, {status, body}) do
+  def status_from_crud({:ok, _struct}, :create), do: created()
+
+  def status_from_crud({:ok, _struct} ), do: ok()
+
+  def status_from_crud({:error, _changeset}), do: malformed_request()
+
+  def send_status({status, body}, conn) do
     Plug.Conn.send_resp(conn, status, body)
   end
 end
