@@ -429,14 +429,18 @@ func delLock(res http.ResponseWriter, req *http.Request) {
 }
 
 func editLock(res http.ResponseWriter, req *http.Request) {
-	/*lockId := chi.URLParam(req, "lockId")
-	systemId := chi.URLParam(req, "systemId")
+	lockId := chi.URLParam(req, "lockId")
 
 	var door Door
 	if err := render.DecodeJSON(req.Body, &door); err != nil {
 		log.Println(err)
 		res.WriteHeader(400)
-	}*/
+	}
+
+	if err := db.Exec(`UPDATE Doors SET name=?, method=? WHERE lockId=?;`, door.Name, door.Method, lockId); err != nil {
+		log.Println(err)
+		res.WriteHeader(400)
+	}
 
 	res.WriteHeader(501)
 }
