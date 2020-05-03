@@ -96,6 +96,7 @@ func router() http.Handler {
 					router.Get("/", listLocks)
 
 					router.Route("/{lockId}", func(router chi.Router) {
+						router.Put("/", editLock)
 						router.Delete("/", delLock)
 						router.Get("/log", lockLog)
 					})
@@ -427,6 +428,19 @@ func delLock(res http.ResponseWriter, req *http.Request) {
 	res.WriteHeader(200)
 }
 
+func editLock(res http.ResponseWriter, req *http.Request) {
+	/*lockId := chi.URLParam(req, "lockId")
+	systemId := chi.URLParam(req, "systemId")
+
+	var door Door
+	if err := render.DecodeJSON(req.Body, &door); err != nil {
+		log.Println(err)
+		res.WriteHeader(400)
+	}*/
+
+	res.WriteHeader(501)
+}
+
 func lockLog(res http.ResponseWriter, req *http.Request) {
 	lockId := chi.URLParam(req, "lockId")
 
@@ -670,7 +684,7 @@ func totp(res http.ResponseWriter, req *http.Request) {
 
 	code := hotp.Totp(totpKey, now, epoch, duration, digits)
 
-	render.JSON(res, req, map[string]int{ "code": code })
+	render.JSON(res, req, map[string]string{ "code": strconv.Itoa(code) })
 }
 
 func addRole(res http.ResponseWriter, req *http.Request) {
