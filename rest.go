@@ -674,7 +674,7 @@ func totp(res http.ResponseWriter, req *http.Request) {
 
 	systemId := req.Context().Value("systemId").(int64)
 
-	row := db.QueryRow(`SELECT FROM Systems totpKey WHERE id = ?;`, systemId)
+	row := db.QueryRow(`SELECT totpKey FROM Systems WHERE id = ?;`, systemId)
 
 	if err = row.Scan(&totpKey); err != nil {
 		log.Println(err)
