@@ -385,23 +385,33 @@ func addLock(res http.ResponseWriter, req *http.Request) {
 
 	render.DecodeJSON(req.Body, &door)
 
-	result, err := db.Exec(`INSERT INTO Doors (name, system, keyX, keyY) VALUES (?, ?, ?, ?);`, door.Name, door.System, door.KeyX.String(), door.KeyY.String())
+	if code, err := genTotp(door.System); err == nil && code == door.Totp {
+		result, err := db.Exec(`INSERT INTO Doors (name, system, keyX, keyY)
+		                       VALUES (?, ?, ?, ?);`,
+		                       door.Name, door.System, door.KeyX.String(), door.KeyY.String())
 
-	if err != nil {
-		log.Println(err)
-		res.WriteHeader(400)
-	}
-
-	if result != nil {
-		if id, err := result.LastInsertId(); err != nil {
+		if err != nil {
 			log.Println(err)
-			res.WriteHeader(500)
-		} else {
-			render.JSON(res, req, map[string]int64{ "id": id })
+			res.WriteHeader(400)
 		}
-	} else {
-		log.Println("Result is null!")
+
+		if result != nil {
+			if id, err := result.LastInsertId(); err != nil {
+				log.Println(err)
+				res.WriteHeader(500)
+			} else {
+				render.JSON(res, req, map[string]int64{ "id": id })
+			}
+		} else {
+			log.Println("Result is null!")
+			res.WriteHeader(500)
+		}
+	} else if err != nil {
+		log.Println("Failed to generate code: ", err)
 		res.WriteHeader(500)
+	} else {
+		log.Println("Codes do not match")
+		res.WriteHeader(401)
 	}
 }
 
@@ -662,33 +672,38 @@ func lockLogin(res http.ResponseWriter, req *http.Request) {
 	}
 }
 
-func totp(res http.ResponseWriter, req *http.Request) {
-	var (
-		totpKey  []byte
-		now      int64
-		duration int64
-		epoch    int64
-		digits   int
-		err      error
-	)
-
-	systemId := req.Context().Value("systemId").(int64)
-
+func genTotp(systemId int64) (string, error) {
 	row := db.QueryRow(`SELECT totpKey FROM Systems WHERE id = ?;`, systemId)
 
-	if err = row.Scan(&totpKey); err != nil {
-		log.Println(err)
-		res.WriteHeader(400)
+	var totpKey []byte
+	if err := row.Scan(&totpKey); err != nil {
+		return "", err
 	}
+
+	var (
+		duration int64
+		now int64
+		epoch int64
+	)
 
 	duration = 60 * 5 // 5 mins
 	now = time.Now().Unix()
 	epoch = 0
-	digits = 6
-
+	digits := 6
 	code := hotp.Totp(totpKey, now, epoch, duration, digits)
 
-	render.JSON(res, req, map[string]string{ "code": strconv.Itoa(code) })
+	return strconv.Itoa(code), nil
+}
+
+func totp(res http.ResponseWriter, req *http.Request) {
+	systemId := req.Context().Value("systemId").(int64)
+
+	if code, err := genTotp(systemId); err != nil {
+		log.Println("Failed to gen totp code: ", err)
+		res.WriteHeader(500)
+	} else {
+		render.JSON(res, req, map[string]string{ "code": fmt.Sprintf("%d*%s", systemId, code) })
+	}
 }
 
 func addRole(res http.ResponseWriter, req *http.Request) {

@@ -14,6 +14,7 @@ type Door struct {
 	Response  []byte   `json:"response,omitempty"`
 	Name      string   `json:"name,omitempty"`
 	Method    int      `json:"method,omitempty"`
+	Totp      string   `json:"totp,omitempty"`
 }
 
 type Totp struct {
