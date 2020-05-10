@@ -686,7 +686,7 @@ func genTotp(systemId int64) (string, error) {
 		epoch int64
 	)
 
-	duration = 60 * 5 // 5 mins
+	duration =  30 // 30 seconds
 	now = time.Now().Unix()
 	epoch = 0
 	digits := 6
