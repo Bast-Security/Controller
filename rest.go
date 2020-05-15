@@ -737,7 +737,7 @@ func getRole(res http.ResponseWriter, req *http.Request) {
 	system := req.Context().Value("systemId").(int64)
 	name := chi.URLParam(req, "role")
 
-	row = db.QueryRow(`SELECT id, FROM Roles WHERE system=? AND name=?;`, system, name)
+	row = db.QueryRow(`SELECT id FROM Roles WHERE system=? AND name=?;`, system, name)
 
 	if err = row.Scan(&role.Id); err == nil {
 		role.Name = name
