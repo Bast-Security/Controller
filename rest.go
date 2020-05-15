@@ -966,7 +966,7 @@ func listLocks(res http.ResponseWriter, req *http.Request) {
 	system := req.Context().Value("systemId").(int64)
 
 	//variable will save the querry command for locks
-	rows, err := db.Query(`SELECT Doors.id Doors.name FROM Doors WHERE system=?`, system)
+	rows, err := db.Query(`SELECT Doors.id, Doors.name FROM Doors WHERE system=?`, system)
 	defer rows.Close()
 
 	//if statement makes sure that the query was a success; if successful then each row in the Doors scheme is read
