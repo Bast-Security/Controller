@@ -776,6 +776,12 @@ func editRole(res http.ResponseWriter, req *http.Request) {
 
 	render.DecodeJSON(req.Body, &role)
 
+	row := db.QueryRow(`SELECT id FROM Roles WHERE name=?`, role.Name)
+	err := row.Scan(&role.Id)
+	if err != nil {
+		panic(err)
+	}
+
 	if len(role.Name) > 0 {
 		if _, err := db.Exec(`UPDATE Roles SET name=? WHERE name=? AND system=?;`, role.Name, name, system); err != nil {
 			log.Println("Failed to update role name: ", err)
