@@ -446,7 +446,7 @@ func editLock(res http.ResponseWriter, req *http.Request) {
 		log.Println(err)
 		res.WriteHeader(400)
 	}
-
+	
 	if _, err := db.Exec(`UPDATE Doors SET name=?, method=? WHERE id=?;`, door.Name, door.Method, lockId); err != nil {
 		log.Println(err)
 		res.WriteHeader(400)
