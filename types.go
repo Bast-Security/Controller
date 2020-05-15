@@ -31,7 +31,6 @@ type Transaction struct {
 }
 
 type Role struct {
-	Id          int64        `json:"id"`
 	System      int64        `json:"system"`
 	Name        string       `json:"name"`
 	Doors       []Door       `json:"doors"`

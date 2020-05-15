@@ -737,25 +737,21 @@ func getRole(res http.ResponseWriter, req *http.Request) {
 	system := req.Context().Value("systemId").(int64)
 	name := chi.URLParam(req, "role")
 
-	row = db.QueryRow(`SELECT id FROM Roles WHERE system=? AND name=?;`, system, name)
+	role.Name = name
+	role.System = system
 
-	if err = row.Scan(&role.Id); err == nil {
-		role.Name = name
-		role.System = system
+	if rows, err = db.Query(`SELECT door FROM Permissions WHERE system=? AND role=?;`, system, name); err == nil {
+		defer rows.Close()
 
-		if rows, err = db.Query(`SELECT door FROM Permissions WHERE system=? AND role=?;`, system, role.Id); err == nil {
-			defer rows.Close()
+		for rows.Next() {
+			var door Door
 
-			for rows.Next() {
-				var door Door
+			rows.Scan(&door.Id)
 
-				rows.Scan(&door.Id)
+			row = db.QueryRow(`SELECT name FROM Doors WHERE id=?`, door.Id)
+			row.Scan(&door.Name)
 
-				row = db.QueryRow(`SELECT name FROM Doors WHERE id=?`, door.Id)
-				row.Scan(&door.Name)
-
-				role.Doors = append(role.Doors, door)
-			}
+			role.Doors = append(role.Doors, door)
 		}
 	}
 
@@ -784,14 +780,14 @@ func editRole(res http.ResponseWriter, req *http.Request) {
 		}
 	}
 
-	if _, err := db.Exec(`DELETE FROM Permissions WHERE role=?;`, role.Id); err != nil {
+	if _, err := db.Exec(`DELETE FROM Permissions WHERE role=?;`, role.Name); err != nil {
 		log.Println("Failed to remove old permission set: ", err)
 		res.WriteHeader(500)
 		return
 	}
 
 	for _, door := range role.Doors {
-		if _, err := db.Exec(`INSERT INTO Permissions (system, role, door) VALUES (?, ?, ?);`, system, role.Id, door.Id); err != nil {
+		if _, err := db.Exec(`INSERT INTO Permissions (system, role, door) VALUES (?, ?, ?);`, system, role.Name, door.Id); err != nil {
 			log.Println("Failed to add permission: ", err)
 			res.WriteHeader(500)
 			return
@@ -857,13 +853,8 @@ func getUser(res http.ResponseWriter, req *http.Request) {
 			for rows.Next() {
 				var role Role
 
-				rows.Scan(&role.Id)
-
-				row = db.QueryRow(`SELECT name FROM Roles WHERE id=?;`, role.Id)
-
-				if err = rows.Scan(&role.Name); err == nil {
-					user.Roles = append(user.Roles, role)
-				}
+				rows.Scan(&role.Name)
+				user.Roles = append(user.Roles, role)
 			}
 		}
 	}
@@ -930,7 +921,7 @@ func editUser(res http.ResponseWriter, req *http.Request) {
 	}
 
 	for _, role := range user.Roles {
-		if _, err := db.Exec(`INSERT INTO UserRole (system, userid, role) VALUES (?, ?, ?);`, system, userId, role.Id); err != nil {
+		if _, err := db.Exec(`INSERT INTO UserRole (system, userid, role) VALUES (?, ?, ?);`, system, userId, role.Name); err != nil {
 			log.Println(err)
 			res.WriteHeader(500)
 			return
