@@ -857,7 +857,7 @@ func getUser(res http.ResponseWriter, req *http.Request) {
 
 	row = db.QueryRow(`SELECT name, email, phone, pin, cardno FROM Users WHERE id=? AND system=?`, userId, system)
 	if err = row.Scan(&user.Name, &user.Email, &user.Phone, &user.Pin, &user.CardNo); err == nil {
-		if rows, err = db.Query(`SELECT role FROM Roles WHERE system=? userid=?;`, system, userId); err == nil {
+		if rows, err = db.Query(`SELECT role FROM UserRole WHERE system=? AND userid=?;`, system, user.Id); err == nil {
 			defer rows.Close()
 
 			for rows.Next() {
@@ -929,10 +929,18 @@ func editUser(res http.ResponseWriter, req *http.Request) {
 		}
 	}
 
-	if _, err := db.Exec(`DELETE FROM Roles WHERE userid=?;`, userId); err != nil {
+	if _, err := db.Exec(`DELETE FROM UserRole WHERE userid=?;`, userId); err != nil {
 		log.Println(err)
 		res.WriteHeader(500)
 		return
+	}
+
+	for i, role := range user.Roles {
+		row := db.QueryRow(`SELECT id FROM Roles WHERE name=?;`, role.Name)
+		if err := row.Scan(&(user.Roles[i].Id)); err != nil {
+			log.Println(err)
+			return
+		}
 	}
 
 	for _, role := range user.Roles {
